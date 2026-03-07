@@ -52,7 +52,7 @@
 
 再复制角色文件：
 
-- `agents/<agent-id>/AGENTS.md`
+- `agents/<agent-id>/AGENTS.md` → workspace 根部 `ROLE.md`
 - `agents/<agent-id>/SOUL.md`
 - `agents/<agent-id>/IDENTITY.md`
 - `agents/<agent-id>/HEARTBEAT.md`
@@ -61,7 +61,7 @@
 ## 推荐覆盖顺序
 
 1. 复制公共模板
-2. 用角色专属 `AGENTS.md` 覆盖公共 `AGENTS.md`
+2. 将角色专属 `AGENTS.md` 复制为 workspace 根部 `ROLE.md`
 3. 复制其余角色文件
 4. 将 `MEMORY.seed.md` 内容合并进 workspace 根部 `MEMORY.md`
 5. 在 `USER.md` 中补齐你的真实信息与偏好
@@ -74,7 +74,7 @@
 12. 把 `automation/cron-prompts/` 中需要的 prompt 文件同步到运行时配置
 13. 若启用完整记忆自动化，再额外安装 `memory-hourly` 与 `memory-weekly`
 14. 选定任务真相源：优先外部任务系统；没有时至少使用 `tasks/registry.md`
-15. 将首跑结果写入当天 `memory/YYYY-MM-DD.md`
+15. 将首跑结果优先写入当天 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
 16. 完成验证后，移除或归档 `BOOTSTRAP.md`
 
 ## 为什么不直接生成真实 workspace

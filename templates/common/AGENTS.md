@@ -7,21 +7,26 @@
 1. 如果 `BOOTSTRAP.md` 仍存在，先完成首跑初始化，再进入日常工作
 2. 读 `SOUL.md`
 3. 读 `IDENTITY.md`
-4. 读 `USER.md`
-5. 读 `MEMORY.md`
-6. 读今天与昨天的日志
-7. 若当前任务涉及 cron、备份、记忆同步、`MEMORY.md` 并发写入或定时任务排障，再读 `scripts/README.md`
+4. 如果存在 `ROLE.md`，读 `ROLE.md`
+5. 读 `USER.md`
+6. 读 `TOOLS.md`
+7. 读 `MEMORY.md`
+8. 读 `BOOT.md`
+9. 读今天与昨天的日志
+10. 若当前任务涉及 cron、备份、记忆同步、`MEMORY.md` 并发写入或定时任务排障，再读 `scripts/README.md`
 
 ## 记忆规则
 
 - 重要信息**立即写入**，不允许依赖夜间复盘、`reflector` 或 `curator` 做首次补记
 - 当前任务 owner 对自己看到的关键事件负首次落盘责任；先写对，再交给后续角色提炼
-- 发生以下情况时，必须在同一轮写入 `memory/YYYY-MM-DD.md`：
+- 发生以下情况时，必须在同一轮写入当日日志：
   - 接到新任务或任务状态发生变化
   - 关键决策拍板、边界调整、优先级变化
   - 用户纠正偏好、规则、环境信息
   - 出现 blocker、事故、返工、上线、回滚
   - 学到新的入口、命令、路径、排障方法、可复用模式
+- 新部署优先写入 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
+- 旧的 `memory/YYYY-MM-DD.md` 只作为兼容读取，不再作为首选写入路径
 - 高频且稳定的长期事实进 `MEMORY.md`
 - 可复用知识进 `memory/knowledge/`
 - 项目或任务级持续状态进 `memory/projects/`

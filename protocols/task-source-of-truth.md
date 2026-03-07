@@ -30,7 +30,8 @@
 ## 和记忆的分工
 
 - 任务真相源：记录“当前状态是什么”
-- `memory/YYYY-MM-DD.md`：记录“发生了什么”
+- `memory/daily/YYYY-MM/YYYY-MM-DD.md`：记录“发生了什么”
+- `memory/YYYY-MM-DD.md`：仅兼容旧式工作区
 - `MEMORY.md`：记录“哪些是高频长期事实”
 - `memory/projects/`：记录项目级长期摘要与事实链
 

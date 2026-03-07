@@ -32,6 +32,17 @@
 - 若脚本路径与模板不同，必须在这里写明真实路径
 - 若某个脚本尚未安装，也要写明“未启用”，避免 agent 误判
 
+## Runtime Layout
+
+当前模板默认的真实 workspace 运行态结构是：
+
+- `AGENTS.md`：公共规则入口
+- `ROLE.md`：角色专属补充规则
+- `scripts/`：运行态工具
+- `memory/`：记忆与知识
+- `data/`：执行日志、dashboard、知识提案
+- `tasks/`：本地任务真相源
+
 ## Skill 源
 
 安装任何新 skill 前，必须先做审查。

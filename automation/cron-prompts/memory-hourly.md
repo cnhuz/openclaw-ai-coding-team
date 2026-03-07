@@ -25,7 +25,7 @@
      - 第二行：`stats: files_with_new_bytes=0 messages_emitted=0`
      - 第三行：`updated: none`
 3. 若有新内容：
-   - 将关键信号 append 到当天 `memory/YYYY-MM-DD.md`
+   - 将关键信号优先 append 到当天 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
    - 只有在出现稳定偏好、关键决策、长期约束时，才更新 `MEMORY.md`
    - 写执行日志到 `data/exec-logs/memory-hourly/`
    - 回复：

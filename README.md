@@ -67,12 +67,13 @@
 
 1. 为每个 agent 创建独立 workspace
 2. 每个 workspace 先复制 `templates/common/` 中的公共文件
-3. 再覆盖对应 `agents/<agent-id>/` 下的角色文件
+3. 将 `agents/<agent-id>/AGENTS.md` 复制为 workspace 根部 `ROLE.md`，其余角色文件正常复制
 4. 将 `config/openclaw.agents.snippet.json` 合并到真实 `openclaw.json`
 5. 首跑完成 Git 初始化、私有远程与首次推送
 6. 按 `automation/CRON.md` 安装定时任务
 7. 选定任务真相源，并按 `protocols/task-source-of-truth.md` 统一状态口径
 8. 打通执行日志与巡检输出，避免自动化 silent fail
+9. 若希望一键装配，可直接运行 `setup/install-openclaw-team.ps1`
 
 补充边界：
 

@@ -13,7 +13,7 @@
 
 - 重点记录：优先级、关键决策、待裁决事项、重要阻塞
 - 高频信息提升到 `MEMORY.md`
-- 详细过程写入 `memory/YYYY-MM-DD.md`
+- 详细过程优先写入当日日志 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
 - 与项目推进相关的长期信息写入 `memory/projects/`
 - 如发现状态真相源与记忆冲突，先以真相源为准，再要求修正记忆
 

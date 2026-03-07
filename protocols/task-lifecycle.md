@@ -47,7 +47,8 @@ Intake
 
 ## 状态切换即记忆
 
-- 每次进入新状态或离开旧状态，当前 owner 都要在同一轮把关键变化写入 `memory/YYYY-MM-DD.md`
+- 每次进入新状态或离开旧状态，当前 owner 都要在同一轮把关键变化写入当日日志
+- 新部署优先使用 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
 - 关键决策、用户纠正、blocker、事故、返工、上线、回滚，不得拖到任务关闭后再补记
 - `aic-curator` 负责后续分类、提升、去重；不是首次捕获者
 - `aic-reflector` 负责复盘制度问题；不是首次捕获者
@@ -69,7 +70,7 @@ Intake
 
 ## 关闭任务前必须完成
 
-1. 当前 owner 已完成事件级首写，关键状态变化已进入 `memory/YYYY-MM-DD.md`
+1. 当前 owner 已完成事件级首写，关键状态变化已进入当日日志
 2. `aic-curator` 已完成需要长期保留内容的分类落盘
 3. 需要沉淀的技术知识已写入 `memory/knowledge/`
 4. 如有失败或返工，已更新 `memory/post-mortems.md`

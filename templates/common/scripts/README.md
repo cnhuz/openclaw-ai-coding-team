@@ -6,6 +6,7 @@
 
 - `automation/` 是团队设计包仓库里的源码与说明区
 - `scripts/` 才是 agent 在真实 workspace 中实际调用的位置
+- `ROLE.md` / `AGENTS.md` 应告诉 agent 什么时候查看这里
 
 ## 什么时候看这个文件
 
