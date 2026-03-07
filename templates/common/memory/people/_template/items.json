@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "entity": "<name>",
+  "type": "person",
+  "items": [
+    {
+      "id": "<name>-001",
+      "fact": "这个人的一个原子事实",
+      "category": "identity",
+      "timestamp": "YYYY-MM-DD",
+      "source": "conversation:<session-or-log>",
+      "status": "active",
+      "supersededBy": null
+    },
+    {
+      "id": "<name>-002",
+      "fact": "这个人的一个已过时或已被替代的事实",
+      "category": "status",
+      "timestamp": "YYYY-MM-DD",
+      "source": "log:YYYY-MM-DD",
+      "status": "superseded",
+      "supersededBy": "<name>-003"
+    }
+  ]
+}

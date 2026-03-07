@@ -1,0 +1,8 @@
+{
+  "type": "design_decision | reusable_experience | terminology | entity_change | repeated_pattern",
+  "confidence": "high | medium | low",
+  "source": "memory/daily/YYYY-MM/YYYY-MM-DD.md",
+  "destination": "memory/knowledge/fw-design-decisions.md",
+  "action": "append | update | supersede | archive",
+  "summary": "一句话摘要"
+}

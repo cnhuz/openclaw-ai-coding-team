@@ -1,0 +1,112 @@
+{
+  "agents": {
+    "defaults": {
+      "subagents": {
+        "maxConcurrent": 4
+      }
+    },
+    "list": [
+      {
+        "id": "aic-captain",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-captain",
+        "heartbeat": {
+          "every": "30m",
+          "target": "last"
+        },
+        "subagents": {
+          "allowAgents": [
+            "aic-planner",
+            "aic-reflector"
+          ]
+        }
+      },
+      {
+        "id": "aic-planner",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-planner",
+        "subagents": {
+          "allowAgents": [
+            "aic-researcher",
+            "aic-reviewer"
+          ]
+        }
+      },
+      {
+        "id": "aic-reviewer",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-reviewer",
+        "subagents": {
+          "allowAgents": []
+        }
+      },
+      {
+        "id": "aic-dispatcher",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-dispatcher",
+        "heartbeat": {
+          "every": "15m",
+          "target": "last"
+        },
+        "subagents": {
+          "allowAgents": [
+            "aic-researcher",
+            "aic-builder",
+            "aic-tester",
+            "aic-releaser",
+            "aic-curator"
+          ]
+        }
+      },
+      {
+        "id": "aic-researcher",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-researcher",
+        "subagents": {
+          "allowAgents": []
+        }
+      },
+      {
+        "id": "aic-builder",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-builder",
+        "subagents": {
+          "allowAgents": []
+        }
+      },
+      {
+        "id": "aic-tester",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-tester",
+        "subagents": {
+          "allowAgents": []
+        }
+      },
+      {
+        "id": "aic-releaser",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-releaser",
+        "subagents": {
+          "allowAgents": []
+        }
+      },
+      {
+        "id": "aic-curator",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-curator",
+        "subagents": {
+          "allowAgents": []
+        }
+      },
+      {
+        "id": "aic-reflector",
+        "workspace": "<OPENCLAW_HOME>/workspace-aic-reflector",
+        "subagents": {
+          "allowAgents": [
+            "aic-curator"
+          ]
+        }
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "agentId": "aic-captain",
+      "match": {
+        "channel": "<CHANNEL_NAME>",
+        "accountId": "<ACCOUNT_ID>"
+      }
+    }
+  ]
+}

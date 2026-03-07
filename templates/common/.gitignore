@@ -1,0 +1,25 @@
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+secrets*
+credentials*
+tokens*
+
+# Session and runtime dumps
+sessions/
+transcripts/
+*.jsonl
+*.jsonl.reset.*
+
+# Runtime state
+memory/_state/
+logs/
+tmp/
+.tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

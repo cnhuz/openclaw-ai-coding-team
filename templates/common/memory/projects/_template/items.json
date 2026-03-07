@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "entity": "<project-name>",
+  "type": "project",
+  "items": [
+    {
+      "id": "<project-name>-001",
+      "fact": "这个项目的一个原子事实",
+      "category": "status",
+      "timestamp": "YYYY-MM-DD",
+      "source": "task:<task-id> | log:YYYY-MM-DD | cron:<job-name>",
+      "status": "active",
+      "supersededBy": null
+    },
+    {
+      "id": "<project-name>-002",
+      "fact": "这个项目的一个阶段性里程碑",
+      "category": "milestone",
+      "timestamp": "YYYY-MM-DD",
+      "source": "log:YYYY-MM-DD",
+      "status": "historical",
+      "supersededBy": null
+    }
+  ]
+}
