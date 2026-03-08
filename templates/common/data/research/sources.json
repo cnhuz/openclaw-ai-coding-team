@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": null,
+  "settings": {
+    "enabled": true,
+    "publicWebOnly": true,
+    "maxSourcesPerCycle": 4,
+    "maxQueriesPerCycle": 8,
+    "maxSignalsPerCycle": 12,
+    "candidateThreshold": 0.58,
+    "readyReviewThreshold": 0.74
+  },
+  "sources": [
+    {
+      "source_id": "github-trending",
+      "label": "GitHub Trending",
+      "channel": "developer-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "https://github.com/trending",
+      "search_templates": [
+        "site:github.com {query}",
+        "site:github.com {topic_keywords} open source",
+        "site:github.com trending {topic_keywords}"
+      ],
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers"
+      ],
+      "notes": "适合发现开源趋势、技术启发与开发者需求。"
+    },
+    {
+      "source_id": "hacker-news",
+      "label": "Hacker News",
+      "channel": "developer-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "https://news.ycombinator.com/",
+      "search_templates": [
+        "site:news.ycombinator.com {query}",
+        "site:news.ycombinator.com {topic_keywords}"
+      ],
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers",
+        "user-pain-demand"
+      ],
+      "notes": "适合发现开发者论坛中的新需求、产品讨论与技术变化。"
+    },
+    {
+      "source_id": "reddit-public",
+      "label": "Reddit Public",
+      "channel": "community-forum",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "https://www.reddit.com/",
+      "search_templates": [
+        "site:reddit.com {query}",
+        "site:reddit.com {topic_keywords} review",
+        "site:reddit.com {topic_keywords} pain"
+      ],
+      "topic_tags": [
+        "user-pain-demand",
+        "community-trends",
+        "competitor-moves"
+      ],
+      "notes": "适合收集用户吐槽、替代方案、使用反馈和新机会线索。"
+    },
+    {
+      "source_id": "product-hunt",
+      "label": "Product Hunt",
+      "channel": "startup-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://www.producthunt.com/",
+      "search_templates": [
+        "site:producthunt.com {query}",
+        "site:producthunt.com {topic_keywords}"
+      ],
+      "topic_tags": [
+        "competitor-moves",
+        "community-trends"
+      ],
+      "notes": "适合发现新产品、定位包装方式与市场关注点。"
+    },
+    {
+      "source_id": "v2ex",
+      "label": "V2EX",
+      "channel": "community-forum",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://www.v2ex.com/",
+      "search_templates": [
+        "site:v2ex.com {query}",
+        "site:v2ex.com {topic_keywords}"
+      ],
+      "topic_tags": [
+        "user-pain-demand",
+        "community-trends"
+      ],
+      "notes": "适合中文开发者与产品用户反馈场景。"
+    },
+    {
+      "source_id": "juejin",
+      "label": "掘金",
+      "channel": "content-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://juejin.cn/",
+      "search_templates": [
+        "site:juejin.cn {query}",
+        "site:juejin.cn {topic_keywords}"
+      ],
+      "topic_tags": [
+        "technical-enablers",
+        "community-trends"
+      ],
+      "notes": "适合中文技术社区趋势扫描与方案空间观察。"
+    },
+    {
+      "source_id": "news-and-analysis",
+      "label": "News / Analysis Sites",
+      "channel": "industry-media",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P3",
+      "base_url": "https://www.36kr.com/",
+      "search_templates": [
+        "site:36kr.com OR site:sspai.com OR site:infoq.com {query}",
+        "site:36kr.com OR site:infoq.com {topic_keywords}"
+      ],
+      "topic_tags": [
+        "competitor-moves",
+        "community-trends",
+        "technical-enablers"
+      ],
+      "notes": "适合发现行业动态、产品变化与技术趋势。"
+    },
+    {
+      "source_id": "official-sites",
+      "label": "Official Sites / Changelogs",
+      "channel": "official-docs",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "",
+      "search_templates": [
+        "{query} official changelog",
+        "{topic_keywords} official blog",
+        "{topic_keywords} release notes"
+      ],
+      "topic_tags": [
+        "competitor-moves",
+        "technical-enablers"
+      ],
+      "notes": "适合验证产品更新、官方发布与版本变更。"
+    }
+  ]
+}

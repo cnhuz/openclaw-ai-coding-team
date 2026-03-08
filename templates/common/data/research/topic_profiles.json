@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-03-08T04:13:21+00:00",
+  "profiles": [
+    {
+      "topic_id": "user-pain-demand",
+      "name": "用户痛点与真实需求",
+      "status": "active",
+      "goal": "持续发现用户在论坛、社区、公开讨论中的真实抱怨、替代方案与未满足需求。",
+      "queries": [
+        "用户 吐槽 效率 论坛",
+        "pain point workflow discussion",
+        "users frustrated with current tools"
+      ],
+      "keywords": [
+        "痛点",
+        "替代方案",
+        "需求",
+        "效率",
+        "工作流"
+      ],
+      "negative_keywords": [
+        "广告",
+        "搬运",
+        "纯资讯"
+      ],
+      "source_preferences": [
+        "reddit-public",
+        "v2ex",
+        "hacker-news"
+      ],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": []
+      }
+    },
+    {
+      "topic_id": "competitor-moves",
+      "name": "竞品变化与市场空档",
+      "status": "active",
+      "goal": "持续跟踪竞品更新、定价变化、产品叙事变化与功能空档。",
+      "queries": [
+        "competitor new feature release",
+        "竞品 更新 功能 定价",
+        "alternative app review feature gap"
+      ],
+      "keywords": [
+        "竞品",
+        "更新",
+        "定价",
+        "替代",
+        "review"
+      ],
+      "negative_keywords": [
+        "软文",
+        "转载"
+      ],
+      "source_preferences": [
+        "official-sites",
+        "product-hunt",
+        "news-and-analysis"
+      ],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": []
+      }
+    },
+    {
+      "topic_id": "community-trends",
+      "name": "社区热点与方向变化",
+      "status": "active",
+      "goal": "发现社区共识变化、热议方向、爆发中的使用场景与流行工作法。",
+      "queries": [
+        "what people are building now",
+        "社区 热门 讨论 新方向",
+        "new trend forum discussion"
+      ],
+      "keywords": [
+        "热点",
+        "趋势",
+        "社区",
+        "讨论",
+        "方向"
+      ],
+      "negative_keywords": [
+        "纯流量",
+        "站外导流"
+      ],
+      "source_preferences": [
+        "hacker-news",
+        "github-trending",
+        "reddit-public",
+        "v2ex"
+      ],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": []
+      }
+    },
+    {
+      "topic_id": "technical-enablers",
+      "name": "技术新能力与方案空间",
+      "status": "active",
+      "goal": "发现可显著改变产品形态、开发效率或交付方式的新技术能力。",
+      "queries": [
+        "new api release developer workflow",
+        "open source launch productivity",
+        "技术 发布 能力 新工作流"
+      ],
+      "keywords": [
+        "API",
+        "模型",
+        "开源",
+        "发布",
+        "工作流"
+      ],
+      "negative_keywords": [
+        "营销稿",
+        "概念炒作"
+      ],
+      "source_preferences": [
+        "github-trending",
+        "hacker-news",
+        "official-sites",
+        "juejin"
+      ],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": []
+      }
+    }
+  ]
+}

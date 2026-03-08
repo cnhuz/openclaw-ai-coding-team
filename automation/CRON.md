@@ -8,9 +8,11 @@
 - heartbeat 只做粗粒度检查与调度
 - 执行型 agent 靠任务触发、system event、isolated cron sprint 持续推进
 - 默认时区显式写为 `Asia/Shanghai`
+- 默认安装完成后，应至少具备一次点火动作：`boot-md` 启动巡检、`openclaw system event --mode now`，或两者同时启用
 
 ## 每日固定任务
 
+- `每 10m`：`aic-captain` 刷新 `data/dashboard.md`
 - `00:00`：每个 workspace 做 Git 备份
 - `00:10`：`aic-reflector` 做当日复盘
 - `00:20`：`aic-curator` 做分类沉淀与长期记忆提升
@@ -33,13 +35,37 @@
 - 所有写 `MEMORY.md` 的 job 共用 `memory/_state/MEMORY.lock`
 - `memory-weekly` 建议放在 `00:40` 左右，并使用 `weekly_gate.py`
 
+默认建议先给以下角色启用完整记忆层：
+
+- `aic-captain`
+- `aic-planner`
+- `aic-dispatcher`
+
+如需更强的长期上下文保鲜，再逐步扩到 `aic-researcher` / `aic-builder` 等执行角色。
+
 ## 持续探索
 
 `aic-researcher` 建议用 cron 跑固定 sprint，而不是靠 heartbeat 空转：
 
-- 高频项目：每 `1h` 一轮
-- 常规项目：每 `2h` 一轮
-- 每轮只做一个研究 sprint，并输出 Opportunity Card 或研究摘要
+- `ambient-discovery`：每 `30m` 一轮，持续巡公开来源
+- `signal-triage`：每 `30m` 或 `45m` 一轮，对弱信号聚合打分
+- `opportunity-deep-dive`：每 `2h` 一轮，对高分候选做深挖
+- `opportunity-promotion`：每 `4h` 一轮，由 captain / planner 决定是否晋升正式任务
+- `exploration-learning`：每 `6h` 一轮，学习高价值来源、query expansion 和噪音词
+- `research-sprint`：继续保留，用于正式 `Researching` 任务的定向研究
+
+推荐分层：
+
+- 持续探索层：不直接创建交付任务，先进入 `data/research/`
+- 正式研究层：进入 `tasks/registry.json` 后，再按 `Researching` 生命周期推进
+
+推荐数据面：
+
+- `data/research/signals/`
+- `data/research/opportunities.json`
+- `data/research/topic_profiles.json`
+- `data/research/source_scores.json`
+- `data/research/opportunity-cards/`
 
 ## 持续实现
 
@@ -70,6 +96,8 @@
 
 ## 配置建议
 
+- 推荐用 `setup/install-openclaw-automation.sh` 或 `setup/install-openclaw-automation.ps1` 做 cron 安装与点火
+- 安装完成后，推荐立刻触发一次 `openclaw system event --mode now`
 - cron prompt 建议以 `.md` 文件作为源码，再同步到运行时
 - 备份、复盘、沉淀拆成独立 job，便于重跑与排障
 - 所有自动化结果都要能写回记忆或产生结构化通知，不能只“跑了但没痕迹”

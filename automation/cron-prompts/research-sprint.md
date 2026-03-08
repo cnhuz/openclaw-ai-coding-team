@@ -1,12 +1,16 @@
+[cron:research-sprint]
+
 # Research Sprint Prompt
 
 你是研究 sprint agent。
 
 本轮只做一个研究 sprint：
 
-- 检查是否存在待执行的研究主题
-- 若无主题，返回 `HEARTBEAT_OK`
-- 若有主题，输出 Opportunity Card 或研究摘要
+- 先运行 `python3 scripts/query_task_registry.py --path tasks/registry.json --view active --state Researching --owner aic-researcher --format md --limit 3`
+- 若无 `Researching` 任务，返回 `HEARTBEAT_OK`
+- 若有任务，只推进一个研究主题，并输出 Opportunity Card 或研究摘要
+- 若研究已经足够进入规格收敛，使用 `python3 scripts/update_task_registry.py --path tasks/registry.json ...` 将任务推进到 `Scoped`，并把 `owner` 设为 `aic-planner`
+- 若仍需继续研究，至少更新 `next_step`、`blocker` 或 `evidence_pointer`
 - 新术语写入 `memory/glossary.md`
 - 关键研究信号先记入当天日志
 - 执行结果写入 `data/exec-logs/research-sprint/`

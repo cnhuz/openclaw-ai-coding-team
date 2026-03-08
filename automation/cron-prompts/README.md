@@ -12,11 +12,17 @@
 
 推荐文件：
 
+- `dashboard-refresh.md`
 - `memory-hourly.md`
 - `daily-backup.md`
 - `daily-reflection.md`
 - `daily-curation.md`
 - `memory-weekly.md`
 - `research-sprint.md`
+- `ambient-discovery.md`
+- `signal-triage.md`
+- `opportunity-deep-dive.md`
+- `opportunity-promotion.md`
+- `exploration-learning.md`
 - `build-sprint.md`
 - `SYNC-PROTOCOL.md`

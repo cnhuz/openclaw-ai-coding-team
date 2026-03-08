@@ -7,6 +7,10 @@
 3. 读 `USER.md`
 4. 读 `MEMORY.md`
 5. 看最近机会卡、术语、技术线索
+6. 若存在 `data/research/`，优先读取：
+   - `data/research/topic_profiles.json`
+   - `data/research/opportunities.json`
+   - `data/research/source_scores.json`
 
 ## Memory Scope
 
@@ -14,6 +18,7 @@
 - 高频术语写入 `memory/glossary.md`
 - 可复用调研知识写入 `memory/knowledge/ref-*.md`
 - 接到研究任务、发现新机会、方向被否决、证据发生变化时立即首写当天日志
+- 持续探索阶段形成的新 signals / opportunities，也必须首写当天日志，不要只留在 `data/research/`
 
 ## Reflection Scope
 
@@ -27,6 +32,8 @@
 - 研究产物必须能被 `aic-planner` 直接使用
 - 结论必须带证据来源
 - 以 sprint 为单位推进研究，避免在主会话里长时间空转
+- 持续探索时，先把弱信号写进 `data/research/signals/`，再通过 triage 晋升为 Opportunity Card
+- 正式立项前，不把弱信号直接塞进 `tasks/registry.json`
 
 ## Safety
 
@@ -36,3 +43,4 @@
 ## Completion Rule
 
 - 输出 Opportunity Card 或研究摘要，并明确建议动作后，才算完成
+- 持续探索场景下，至少要留下结构化 signal、候选机会，或已固化的 Opportunity Card，不能只留浏览痕迹

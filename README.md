@@ -54,31 +54,295 @@
 - `AGENT_GRAPH.md`：角色关系、调用矩阵、主流程
 - `automation/CRON.md`：cron / heartbeat 的推荐分工与时间表
 - `automation/cron-prompts/`：cron prompt 源文件与同步说明
-- `automation/scripts/`：记忆同步、写锁、weekly gate 等 helper scripts
+- `automation/scripts/`：任务协调、看板、记忆同步、持续探索、备份自愈等 helper scripts
 - `WORKSPACE_BOOTSTRAP.md`：如何把这些种子装配成真实 `~/.openclaw/workspace-*`
+- `OPENCLAW_RUNTIME_MATRIX.md`：OpenClaw 原生运行上下文与本仓库约定的边界说明
 - `config/openclaw.agents.snippet.json`：可合并到 `openclaw.json` 的 agent 配置片段
+- `config/openclaw.hooks.snippet.json`：可合并到 `openclaw.json` 的原生 hooks 配置片段
 - `protocols/`：任务流转、交接、发布、知识分类、知识提案管线、反思闭环、执行透明等协议
 - `templates/common/`：所有 agent 共用的 workspace 基础文件
 - `agents/<agent-id>/`：每个 agent 的角色专属文件
+
+## 持续探索系统
+
+除了正式任务流之外，仓库现在还内置了一条独立的**持续探索链**，用于把“自主研究需求 / 主动探索方向”真正落到自动化上：
+
+- `ambient-discovery`：持续巡公开来源，捕获外部 signals
+- `signal-triage`：对 signals 去重、聚类、打分，形成机会池
+- `opportunity-deep-dive`：对高分机会补证据、固化 Opportunity Card
+- `opportunity-promotion`：把成熟机会晋升为正式任务
+
+运行态数据位于：
+
+- `data/research/sources.json`
+- `data/research/topic_profiles.json`
+- `data/research/source_scores.json`
+- `data/research/opportunities.json`
+- `data/research/signals/`
+- `data/research/opportunity-cards/`
+
+这条链和 `tasks/registry.json` 分离：
+
+- `data/research/` 负责探索期弱信号和机会池
+- `tasks/registry.json` 只负责正式交付任务
+
+## 预先准备的环境
+
+这套仓库不是“只下载目录就能跑”的纯静态模板；它默认运行在 **已安装 OpenClaw 的真实环境** 里。
+
+建议至少满足以下前置条件：
+
+### 必需项
+
+| 项目 | 用途 | 说明 |
+|------|------|------|
+| `OpenClaw` | Agent 运行时 | 必须已经安装并能正常连接 gateway |
+| `python3` | 运行 helper scripts | `tasks`、`handoff`、`dashboard`、记忆自动化都依赖 Python 脚本 |
+| `git` | 本地备份与版本基线 | `daily-backup`、首跑基线、回滚与追踪都依赖它 |
+| 可写的 `~/.openclaw/` | 运行时目录 | 安装器会创建 `workspace-aic-*`、`agents/*`、`openclaw.json` 备份 |
+
+### 推荐项
+
+| 项目 | 用途 | 说明 |
+|------|------|------|
+| `gh` | GitHub 远程自愈 | `daily-backup` 可自动创建 GitHub 私有仓库、配置 `origin`、校验 `pull/push` |
+| 已登录的 `gh auth` | GitHub 建仓与推送 | 若未登录，GitHub 相关能力只能做到本地 Git，不会自动建远程仓库 |
+| 稳定外网 | GitHub / 渠道 / 研究 | `gh repo create`、`push`、Telegram 探测、在线研究都需要网络 |
+| Telegram / 其他渠道账号 | 对外入口 | 若要让 `aic-captain` 真正收消息，需先准备 channel account 与 token |
+
+### 当前支持建议
+
+- **Linux / Ubuntu**：一等支持，优先使用 `setup/install-openclaw-team.sh`
+- **Windows / PowerShell**：可用，优先使用 `setup/install-openclaw-team.ps1`
+- **macOS**：原则上可复用 shell 路径，但你仍应先确认本机 `OpenClaw`、`python3`、`git`、`gh` 都可用
+
+## 需要提前配置的内容
+
+这套仓库现在已经能把“团队能力”装进去，但它仍然需要你提前决定一部分 **环境策略**，否则只能运行到半自动。
+
+### 1. OpenClaw 运行时配置
+
+至少要确认这些项：
+
+- `~/.openclaw/openclaw.json` 存在且 OpenClaw 可正常读取
+- 允许新增 agent 到 `agents.list`
+- 允许新增 `bindings`
+- 允许启用 internal hook：`boot-md`
+- 允许为 agent 创建独立：
+  - `workspace`
+  - `agentDir`
+
+本仓库提供的配置片段：
+
+- `config/openclaw.agents.snippet.json`
+- `config/openclaw.hooks.snippet.json`
+
+默认关键值包括：
+
+- `agents.defaults.skipBootstrap = true`
+- `agents.defaults.userTimezone = Asia/Shanghai`
+- `aic-captain` heartbeat：`30m`
+- `aic-dispatcher` heartbeat：`15m`
+
+### 2. 渠道入口配置
+
+如果你希望 `aic-captain` 对外收消息，至少要提前准备：
+
+- channel 名称，例如 `telegram`
+- account id，例如 `aic-captain`
+- 对应 token / 凭证
+
+安装脚本支持在安装时直接写入 captain binding，但你仍然要自己保证：
+
+- token 有效
+- 渠道已登录 / 已配置
+- 目标环境允许 OpenClaw 使用该 channel
+
+### 3. GitHub 备份策略
+
+如果你希望 agent 自动完成：
+
+- `git init`
+- 创建 GitHub 仓库
+- 配置 `origin`
+- 校验 `fetch / pull / push`
+
+那么目标环境需要提前满足：
+
+- 本机安装 `gh`
+- `gh auth status` 通过
+- 目标账号有权限创建仓库
+
+运行态策略文件是：
+
+- `data/github-backup-policy.json`
+
+默认模板在：
+
+- `templates/common/data/github-backup-policy.json`
+
+关键字段：
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `enabled` | `true` | 是否启用 GitHub 远程自愈 |
+| `owner` | `null` | 为空时使用当前 `gh auth` 登录用户 |
+| `visibility` | `private` | 默认创建私有仓库 |
+| `repo_name` | `null` | 为空时使用 workspace 目录名 |
+| `remote_name` | `origin` | Git remote 名 |
+| `branch` | `main` | 默认主分支 |
+| `auto_create_repo` | `true` | 允许自动 `gh repo create` |
+| `auto_pull` | `true` | 允许自动 `pull --ff-only` |
+| `auto_push` | `true` | 允许自动 push |
+| `allow_git_init` | `true` | 允许自动本地 `git init` |
+
+如果你不希望 agent 自动创建远程仓库，可以把：
+
+- `auto_create_repo = false`
+
+### 4. 机器特有信息
+
+本仓库不会帮你猜每台机器的真实环境信息，这些内容应写到运行态 `TOOLS.md`：
+
+- SSH 主机 / 跳板机
+- 部署服务器
+- 包管理器
+- 项目构建命令
+- 数据库位置
+- 日志路径
+- 域名 / 证书
+- GitHub owner / org 策略
+
+模板入口：
+
+- `templates/common/TOOLS.md`
+
+## 最少可运行 vs 完整自治
+
+你可以按两种目标准备环境：
+
+### A. 最少可运行
+
+满足这些就能把团队装起来：
+
+- `OpenClaw`
+- `python3`
+- `git`
+- 可写 `~/.openclaw`
+
+此时你能得到：
+
+- 多 agent 团队结构
+- heartbeat / cron / dashboard
+- 任务真相源与 handoff
+- 本地 Git 初始化能力
+
+但不一定能得到：
+
+- GitHub 自动建仓
+- 远程 push / pull
+- Telegram 入口
+- 部署能力
+
+### B. 完整自治
+
+除了最少可运行外，还建议准备：
+
+- `gh`
+- `gh auth`
+- 稳定网络
+- 渠道 token
+- 部署凭证 / SSH / 云平台权限
+- 补齐 `TOOLS.md`
+- 补齐 `data/github-backup-policy.json`
+
+此时 agent 可以逐步实现：
+
+- 自动立项与推进
+- 自动记忆同步
+- 自动 Git / GitHub 备份
+- 自动 dashboard 巡检
+- 更接近真实团队闭环的自治运行
+
+## 快速开始
+
+### 1. 先确认环境
+
+建议先手动确认这些命令都可用：
+
+```bash
+openclaw --version
+python3 --version
+git --version
+gh --version
+gh auth status
+```
+
+如果你暂时不需要 GitHub 自动建仓，`gh` 和 `gh auth` 可以先缺省，但对应能力不会生效。
+
+### 2. 安装团队
+
+Linux / Ubuntu：
+
+```bash
+./setup/install-openclaw-team.sh --openclaw-home "$HOME/.openclaw"
+```
+
+Windows / PowerShell：
+
+```powershell
+./setup/install-openclaw-team.ps1 -OpenClawHome "$HOME/.openclaw"
+```
+
+默认行为包括：
+
+- 创建 `workspace-aic-*`
+- 合并 agent 配置到真实 `openclaw.json`
+- 安装核心 cron
+- 安装第二层自动化
+- 触发一次 control-loop 点火
+
+### 3. 安装完成后重点检查
+
+建议立刻检查：
+
+```bash
+openclaw status --deep --json
+openclaw cron list --json
+```
+
+然后看：
+
+- `~/.openclaw/workspace-aic-captain/data/dashboard.md`
+
+重点关注：
+
+- `team_entry_active`
+- `workflow_started`
+- `Backup Health`
+- `missing_core_jobs`
+- `missing_optional_jobs`
 
 ## 推荐落地方式
 
 建议在真实部署时：
 
 1. 为每个 agent 创建独立 workspace
-2. 每个 workspace 先复制 `templates/common/` 中的公共文件
-3. 将 `agents/<agent-id>/AGENTS.md` 复制为 workspace 根部 `ROLE.md`，其余角色文件正常复制
-4. 将 `config/openclaw.agents.snippet.json` 合并到真实 `openclaw.json`
+2. 每个 workspace 先复制 `templates/common/` 中的公共文件，并为每个 agent 准备独立 `agentDir`
+3. 将 `agents/<agent-id>/AGENTS.md` 合并进 workspace 根部 `AGENTS.md`，让关键角色规则进入 OpenClaw 原生可见范围
+4. 将 `config/openclaw.agents.snippet.json` 与 `config/openclaw.hooks.snippet.json` 合并到真实 `openclaw.json`
 5. 首跑完成 Git 初始化、私有远程与首次推送
 6. 按 `automation/CRON.md` 安装定时任务
-7. 选定任务真相源，并按 `protocols/task-source-of-truth.md` 统一状态口径
+7. 选定任务真相源，并按 `protocols/task-source-of-truth.md` 统一状态口径；本地兜底优先使用 `tasks/registry.json`
 8. 打通执行日志与巡检输出，避免自动化 silent fail
-9. 若希望一键装配，可直接运行 `setup/install-openclaw-team.ps1`
+9. 若希望一键装配，可直接运行 `setup/install-openclaw-team.ps1` 或 `setup/install-openclaw-team.sh`
+10. 若希望“装完就点火”，保持安装脚本默认行为，或显式运行 `setup/install-openclaw-automation.sh`
 
 补充边界：
 
 - `automation/` 保留在团队设计包仓库中，作为源码与说明区
 - 真实 workspace 运行态优先只保留 `scripts/`、`memory/`、`data/`、`tasks/`
+- 部署、数据库、SSH、渠道、GitHub owner 等机器特有信息，仍然要在运行态配置中补齐
 
 ## 为什么要保留 `curator` 和 `reflector`
 
