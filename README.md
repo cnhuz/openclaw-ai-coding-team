@@ -307,6 +307,7 @@
 - 多 agent 团队结构
 - heartbeat / cron / dashboard
 - 本地 Web 控制台：`python3 apps/control_plane/server.py --openclaw-home ~/.openclaw --host 127.0.0.1 --port 8765`
+- 第二版控制台已支持任务/机会详情页、handoff 列表、文件查看、过滤和 `ready_review` 手动晋升
 - 任务真相源与 handoff
 - 本地 Git 初始化能力
 

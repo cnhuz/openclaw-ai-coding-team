@@ -79,11 +79,20 @@ def is_related_task(task: dict[str, Any], opportunity: dict[str, Any], card_path
     return False
 
 
-def select_candidate(opportunities: list[dict[str, Any]], registry: dict[str, Any], workspace_root: Path, card_dir: Path, min_score: float) -> tuple[str, dict[str, Any] | None, dict[str, Any] | None]:
+def select_candidate(
+    opportunities: list[dict[str, Any]],
+    registry: dict[str, Any],
+    workspace_root: Path,
+    card_dir: Path,
+    min_score: float,
+    opportunity_id: str,
+) -> tuple[str, dict[str, Any] | None, dict[str, Any] | None]:
     tasks = [item for item in registry.get("tasks", []) if isinstance(item, dict)]
     best_linked: tuple[dict[str, Any], dict[str, Any]] | None = None
 
     for opportunity in sort_opportunities(opportunities):
+        if opportunity_id and opportunity.get("opportunity_id") != opportunity_id:
+            continue
         if opportunity.get("status") != "ready_review":
             continue
         if float(opportunity.get("score", 0) or 0) < min_score:
@@ -235,6 +244,7 @@ def main() -> int:
     parser.add_argument("--research-lock", default="data/research/_state/research.lock")
     parser.add_argument("--task-lock", default="tasks/_state/registry.lock")
     parser.add_argument("--min-score", type=float, default=0.7)
+    parser.add_argument("--opportunity-id", default="")
     parser.add_argument("--task-state", default="Intake")
     parser.add_argument("--task-owner", default="aic-planner")
     parser.add_argument("--from-owner", default="aic-researcher")
@@ -257,7 +267,14 @@ def main() -> int:
         registry_path = Path(args.task_registry_path).expanduser()
         registry = load_registry(registry_path)
 
-        decision, opportunity, existing_task = select_candidate(opportunities, registry, workspace_root, card_dir, args.min_score)
+        decision, opportunity, existing_task = select_candidate(
+            opportunities,
+            registry,
+            workspace_root,
+            card_dir,
+            args.min_score,
+            args.opportunity_id.strip(),
+        )
         result: dict[str, Any] = {"ok": True, "decision": decision}
         if opportunity is None:
             if args.format == "md":

@@ -20,6 +20,13 @@
 - 当前提供两个安全操作：
   - 刷新 captain dashboard
   - 手动触发某个 cron job
+- 第二版已补：
+  - 任务详情页
+  - 机会详情页
+  - Handoff 列表页
+  - 文件查看页
+  - 任务 / 机会过滤
+  - `ready_review` 机会手动晋升
 
 ## 启动
 
@@ -41,6 +48,10 @@ http://127.0.0.1:8765
 - `/agents`：agent 活动
 - `/cron`：cron 管理
 - `/logs`：最近执行日志
+- `/handoffs`：最近交接
+- `/task?id=...`：任务详情
+- `/opportunity?id=...`：机会详情
+- `/file?path=...`：文件查看
 
 ## API
 

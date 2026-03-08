@@ -89,6 +89,10 @@ class AppConfig:
         return self.captain_workspace / "data/exec-logs"
 
     @property
+    def repo_root(self) -> Path:
+        return Path(__file__).resolve().parents[2]
+
+    @property
     def workspaces(self) -> dict[str, Path]:
         return {
             "aic-captain": self.captain_workspace,
@@ -161,6 +165,10 @@ def escape(value: object) -> str:
     return html.escape(str(value))
 
 
+def link(label: str, href: str) -> str:
+    return f"<a href=\"{escape(href)}\">{escape(label)}</a>"
+
+
 def load_json(path: Path, fallback: dict | list) -> dict | list:
     if not path.exists():
         return fallback
@@ -194,6 +202,57 @@ def has_blocker(task: dict) -> bool:
     if isinstance(blocker, list):
         return any(isinstance(item, str) and item.strip() for item in blocker)
     return True
+
+
+def file_path_to_url(path: Path) -> str:
+    return "/file?" + urlencode({"path": str(path)})
+
+
+def format_path(path: Path, roots: list[Path]) -> str:
+    for root in roots:
+        if path.is_relative_to(root):
+            return str(path.relative_to(root))
+    return str(path)
+
+
+def resolve_viewable_path(config: AppConfig, raw: str) -> Path | None:
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = (config.repo_root / path).resolve()
+    else:
+        path = path.resolve()
+    allowed_roots = [config.openclaw_home.resolve(), config.repo_root.resolve()]
+    if any(path.is_relative_to(root) for root in allowed_roots) and path.exists() and path.is_file():
+        return path
+    return None
+
+
+def evidence_links(config: AppConfig, values: list[str]) -> str:
+    parts: list[str] = []
+    for item in values:
+        if item.startswith("http://") or item.startswith("https://"):
+            parts.append(f"<a href=\"{escape(item)}\" target=\"_blank\" rel=\"noreferrer\">{escape(item)}</a>")
+            continue
+        resolved = resolve_viewable_path(config, item)
+        if resolved is not None:
+            parts.append(link(format_path(resolved, [config.openclaw_home, config.repo_root]), file_path_to_url(resolved)))
+            continue
+        parts.append(f"<code>{escape(item)}</code>")
+    return "<br>".join(parts) if parts else "<em>none</em>"
+
+
+def find_task(tasks: list[dict], task_id: str) -> dict | None:
+    for task in tasks:
+        if task.get("task_id") == task_id:
+            return task
+    return None
+
+
+def find_opportunity(opportunities: list[dict], opportunity_id: str) -> dict | None:
+    for item in opportunities:
+        if item.get("opportunity_id") == opportunity_id:
+            return item
+    return None
 
 
 def load_tasks(config: AppConfig) -> list[dict]:
@@ -296,6 +355,7 @@ def load_recent_handoffs(config: AppConfig, limit: int = 8) -> list[dict]:
                 "sender": sender,
                 "current_stage": current_stage,
                 "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
+                "summary": lines[5] if len(lines) > 5 else "",
             }
         )
         if len(rows) >= limit:
@@ -378,6 +438,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
         ("总览", "/"),
         ("任务", "/tasks"),
         ("机会池", "/opportunities"),
+        ("Handoffs", "/handoffs"),
         ("Agents", "/agents"),
         ("Cron", "/cron"),
         ("日志", "/logs"),
@@ -485,7 +546,7 @@ def render_summary(state: dict, message: str) -> bytes:
         updated_at = parse_iso(task.get("updated_at"))
         summary_rows.append(
             [
-                escape(task["task_id"]),
+                link(task["task_id"], "/task?" + urlencode({"id": str(task["task_id"])})),
                 f"<span class=\"pill\">{escape(task['state'])}</span>",
                 escape(task["owner"]),
                 escape(task["priority"]),
@@ -498,7 +559,7 @@ def render_summary(state: dict, message: str) -> bytes:
     for item in state["opportunities"][:8]:
         opportunity_rows.append(
             [
-                escape(item.get("opportunity_id", "-")),
+                link(str(item.get("opportunity_id", "-")), "/opportunity?" + urlencode({"id": str(item.get("opportunity_id", ""))})),
                 f"<span class=\"pill\">{escape(item.get('status', '-'))}</span>",
                 escape(item.get("score", "-")),
                 escape(item.get("recommended_action", "-")),
@@ -529,13 +590,13 @@ def render_summary(state: dict, message: str) -> bytes:
 
     log_rows = []
     for item in state["recent_logs"][:10]:
-        relative = item["path"].relative_to(config.openclaw_home)
+        relative = format_path(item["path"], [config.openclaw_home, config.repo_root])
         log_rows.append(
             [
                 escape(item["agent_id"]),
                 escape(item["job_name"]),
                 escape(format_dt(item["updated_at"])),
-                f"<code>{escape(relative)}</code>",
+                link(relative, file_path_to_url(item["path"])),
             ]
         )
 
@@ -547,6 +608,9 @@ def render_summary(state: dict, message: str) -> bytes:
           <input type="hidden" name="next" value="/">
           <button type="submit">刷新 Captain 看板</button>
         </form>
+        {render_job_trigger(state, 'planner-intake', '/')}
+        {render_job_trigger(state, 'ambient-discovery', '/')}
+        {render_job_trigger(state, 'opportunity-promotion', '/')}
       </div>
       <div class="hint">默认只绑定本机地址。若要公网访问，建议放到反向代理和鉴权后面。</div>
     </div>
@@ -596,14 +660,21 @@ def render_summary(state: dict, message: str) -> bytes:
 
 
 def render_tasks(state: dict, message: str) -> bytes:
+    query = state["query"]
+    owner_filter = query.get("owner", [""])[0]
+    state_filter = query.get("state", [""])[0]
     rows = []
     for task in state["tasks"]:
+        if owner_filter and task.get("owner") != owner_filter:
+            continue
+        if state_filter and task.get("state") != state_filter:
+            continue
         updated_at = parse_iso(task.get("updated_at"))
         evidence = task.get("evidence_pointer", [])
         evidence_count = len(evidence) if isinstance(evidence, list) else 0
         rows.append(
             [
-                escape(task["task_id"]),
+                link(task["task_id"], "/task?" + urlencode({"id": str(task["task_id"])})),
                 escape(task.get("title", "")),
                 f"<span class=\"pill\">{escape(task.get('state', '-'))}</span>",
                 escape(task.get("owner", "-")),
@@ -614,29 +685,63 @@ def render_tasks(state: dict, message: str) -> bytes:
                 escape(evidence_count),
             ]
         )
-    body = f"<div class=\"panel\"><h2>任务控制面</h2>{table(['Task', 'Title', 'State', 'Owner', 'Priority', 'Updated', 'Blocker', 'Next Step', 'Evidence'], rows)}</div>"
+    filters = f"""
+    <div class="panel">
+      <h2>过滤</h2>
+      <form method="get" action="/tasks" class="actions">
+        <input name="owner" placeholder="owner" value="{escape(owner_filter)}">
+        <input name="state" placeholder="state" value="{escape(state_filter)}">
+        <button type="submit">过滤</button>
+      </form>
+    </div>
+    """
+    body = filters + f"<div class=\"panel\"><h2>任务控制面</h2>{table(['Task', 'Title', 'State', 'Owner', 'Priority', 'Updated', 'Blocker', 'Next Step', 'Evidence'], rows)}</div>"
     return layout("Tasks", body, "/tasks", message)
 
 
 def render_opportunities(state: dict, message: str) -> bytes:
+    query = state["query"]
+    status_filter = query.get("status", [""])[0]
     rows = []
     for item in state["opportunities"][:50]:
+        if status_filter and item.get("status") != status_filter:
+            continue
         topic_ids = item.get("topic_ids", [])
         topic_text = ", ".join(topic_ids) if isinstance(topic_ids, list) and topic_ids else "-"
+        actions = [escape(item.get("recommended_action", "-"))]
+        if item.get("status") == "ready_review":
+            actions.append(
+                (
+                    "<form class=\"inline\" method=\"post\" action=\"/actions/promote-opportunity\">"
+                    f"<input type=\"hidden\" name=\"opportunity_id\" value=\"{escape(item.get('opportunity_id', ''))}\">"
+                    "<input type=\"hidden\" name=\"next\" value=\"/opportunities\">"
+                    "<button type=\"submit\">晋升</button>"
+                    "</form>"
+                )
+            )
         rows.append(
             [
-                escape(item.get("opportunity_id", "-")),
+                link(str(item.get("opportunity_id", "-")), "/opportunity?" + urlencode({"id": str(item.get("opportunity_id", ""))})),
                 f"<span class=\"pill\">{escape(item.get('status', '-'))}</span>",
                 escape(item.get("score", "-")),
-                escape(item.get("recommended_action", "-")),
+                " ".join(actions),
                 escape(topic_text),
                 escape(item.get("evidence_count", 0)),
                 escape(item.get("evidence_domain_diversity", 0)),
-                escape(item.get("task_id") or "-"),
+                link(str(item.get("task_id")), "/task?" + urlencode({"id": str(item.get("task_id"))})) if item.get("task_id") else "-",
                 escape(item.get("summary", "")),
             ]
         )
-    body = f"<div class=\"panel\"><h2>机会池</h2>{table(['Opportunity', 'Status', 'Score', 'Action', 'Topics', 'Evidence', 'Domains', 'Task', 'Summary'], rows)}</div>"
+    filters = f"""
+    <div class="panel">
+      <h2>过滤</h2>
+      <form method="get" action="/opportunities" class="actions">
+        <input name="status" placeholder="status" value="{escape(status_filter)}">
+        <button type="submit">过滤</button>
+      </form>
+    </div>
+    """
+    body = filters + f"<div class=\"panel\"><h2>机会池</h2>{table(['Opportunity', 'Status', 'Score', 'Action', 'Topics', 'Evidence', 'Domains', 'Task', 'Summary'], rows)}</div>"
     return layout("Opportunities", body, "/opportunities", message)
 
 
@@ -653,6 +758,23 @@ def render_agents(state: dict, message: str) -> bytes:
         )
     body = f"<div class=\"panel\"><h2>Agent 活动</h2>{table(['Agent', 'Sessions', 'Last Activity', 'Age'], rows)}</div>"
     return layout("Agents", body, "/agents", message)
+
+
+def render_handoffs(state: dict, message: str) -> bytes:
+    config: AppConfig = state["config"]
+    rows = []
+    for item in state["recent_handoffs"]:
+        rows.append(
+            [
+                link(item["task_id"], "/task?" + urlencode({"id": item["task_id"]})),
+                escape(item["sender"]),
+                escape(item["current_stage"]),
+                escape(format_dt(item["updated_at"])),
+                link(format_path(item["path"], [config.openclaw_home, config.repo_root]), file_path_to_url(item["path"])),
+            ]
+        )
+    body = f"<div class=\"panel\"><h2>Recent Handoffs</h2>{table(['Task', 'From', 'Stage', 'Updated', 'File'], rows)}</div>"
+    return layout("Handoffs", body, "/handoffs", message)
 
 
 def render_cron(state: dict, message: str) -> bytes:
@@ -690,11 +812,137 @@ def render_logs(state: dict, message: str) -> bytes:
                 escape(item["agent_id"]),
                 escape(item["job_name"]),
                 escape(format_dt(item["updated_at"])),
-                f"<code>{escape(item['path'].relative_to(config.openclaw_home))}</code>",
+                link(format_path(item["path"], [config.openclaw_home, config.repo_root]), file_path_to_url(item["path"])),
             ]
         )
     body = f"<div class=\"panel\"><h2>最新执行日志</h2>{table(['Agent', 'Job', 'Updated', 'Path'], rows)}</div>"
     return layout("Logs", body, "/logs", message)
+
+
+def render_kv_table(title: str, rows: list[tuple[str, str]]) -> str:
+    body = "".join(f"<tr><th>{escape(key)}</th><td>{value}</td></tr>" for key, value in rows)
+    return f"<div class=\"panel\"><h2>{escape(title)}</h2><table><tbody>{body}</tbody></table></div>"
+
+
+def render_task_detail(state: dict, task: dict, message: str) -> bytes:
+    config: AppConfig = state["config"]
+    evidence = task.get("evidence_pointer", [])
+    handoffs = [item for item in state["recent_handoffs"] if item["task_id"] == task["task_id"]]
+    logs = [item for item in state["recent_logs"] if task["task_id"] in item["path"].name]
+    details = render_kv_table(
+        "任务详情",
+        [
+            ("task_id", escape(task["task_id"])),
+            ("title", escape(task.get("title", ""))),
+            ("state", f"<span class=\"pill\">{escape(task.get('state', '-'))}</span>"),
+            ("owner", escape(task.get("owner", "-"))),
+            ("priority", escape(task.get("priority", "-"))),
+            ("updated_at", escape(task.get("updated_at", "-"))),
+            ("blocker", escape(task.get("blocker") or "none")),
+            ("next_step", escape(task.get("next_step", ""))),
+            ("evidence", evidence_links(config, evidence if isinstance(evidence, list) else [])),
+        ],
+    )
+    handoff_rows = [
+        [
+            escape(item["sender"]),
+            escape(item["current_stage"]),
+            escape(format_dt(item["updated_at"])),
+            link(format_path(item["path"], [config.openclaw_home, config.repo_root]), file_path_to_url(item["path"])),
+        ]
+        for item in handoffs
+    ]
+    log_rows = [
+        [
+            escape(item["agent_id"]),
+            escape(item["job_name"]),
+            escape(format_dt(item["updated_at"])),
+            link(format_path(item["path"], [config.openclaw_home, config.repo_root]), file_path_to_url(item["path"])),
+        ]
+        for item in logs
+    ]
+    actions = f"""
+    <div class="panel">
+      <h2>快捷操作</h2>
+      <div class="actions">
+        <form class="inline" method="post" action="/actions/refresh-dashboard">
+          <input type="hidden" name="next" value="/task?id={escape(task['task_id'])}">
+          <button type="submit">刷新看板</button>
+        </form>
+      </div>
+    </div>
+    """
+    body = details + actions + table(["From", "Stage", "Updated", "File"], handoff_rows) + table(["Agent", "Job", "Updated", "Log"], log_rows)
+    return layout(f"Task {task['task_id']}", body, "/tasks", message)
+
+
+def render_opportunity_detail(state: dict, opportunity: dict, message: str) -> bytes:
+    config: AppConfig = state["config"]
+    evidence = opportunity.get("evidence_urls", [])
+    if not isinstance(evidence, list):
+        evidence = []
+    if opportunity.get("card_path"):
+        evidence = [str(opportunity["card_path"]), *evidence]
+    task_link = "-"
+    if opportunity.get("task_id"):
+        task_link = link(str(opportunity["task_id"]), "/task?" + urlencode({"id": str(opportunity["task_id"])}))
+    details = render_kv_table(
+        "机会详情",
+        [
+            ("opportunity_id", escape(opportunity.get("opportunity_id", "-"))),
+            ("status", f"<span class=\"pill\">{escape(opportunity.get('status', '-'))}</span>"),
+            ("score", escape(opportunity.get("score", "-"))),
+            ("recommended_action", escape(opportunity.get("recommended_action", "-"))),
+            ("task_id", task_link),
+            ("topic_ids", escape(", ".join(opportunity.get("topic_ids", [])) if isinstance(opportunity.get("topic_ids"), list) else "-")),
+            ("evidence_count", escape(opportunity.get("evidence_count", 0))),
+            ("evidence_domain_diversity", escape(opportunity.get("evidence_domain_diversity", 0))),
+            ("has_official_source", escape(opportunity.get("has_official_source", False))),
+            ("summary", escape(opportunity.get("summary", ""))),
+            ("evidence", evidence_links(config, evidence)),
+        ],
+    )
+    actions = ""
+    if opportunity.get("status") == "ready_review":
+        actions = f"""
+        <div class="panel">
+          <h2>快捷操作</h2>
+          <div class="actions">
+            <form class="inline" method="post" action="/actions/promote-opportunity">
+              <input type="hidden" name="opportunity_id" value="{escape(opportunity.get('opportunity_id', ''))}">
+              <input type="hidden" name="next" value="/opportunity?id={escape(opportunity.get('opportunity_id', ''))}">
+              <button type="submit">晋升为正式任务</button>
+            </form>
+          </div>
+        </div>
+        """
+    body = details + actions
+    return layout(f"Opportunity {opportunity.get('opportunity_id', '-')}", body, "/opportunities", message)
+
+
+def render_file_detail(config: AppConfig, path: Path, message: str) -> bytes:
+    content = path.read_text(encoding="utf-8", errors="replace")
+    body = f"""
+    <div class="panel">
+      <h2>文件</h2>
+      <div class="muted"><code>{escape(str(path))}</code></div>
+      <pre style="white-space:pre-wrap;overflow:auto;margin-top:12px;">{escape(content)}</pre>
+    </div>
+    """
+    return layout(f"File {format_path(path, [config.openclaw_home, config.repo_root])}", body, "", message)
+
+
+def render_job_trigger(state: dict, job_name: str, next_path: str) -> str:
+    job = next((item for item in state["cron_jobs"] if item["name"] == job_name), None)
+    if job is None:
+        return ""
+    return (
+        "<form class=\"inline\" method=\"post\" action=\"/actions/run-cron\">"
+        f"<input type=\"hidden\" name=\"job_id\" value=\"{escape(job['id'])}\">"
+        f"<input type=\"hidden\" name=\"next\" value=\"{escape(next_path)}\">"
+        f"<button type=\"submit\">{escape(job_name)}</button>"
+        "</form>"
+    )
 
 
 def json_response(handler: BaseHTTPRequestHandler, payload: dict | list, status: HTTPStatus = HTTPStatus.OK) -> None:
@@ -732,6 +980,7 @@ def build_handler(config: AppConfig):
             query = parse_qs(parsed.query)
             message = query.get("message", [""])[0]
             state = build_state(config)
+            state["query"] = query
 
             if parsed.path == "/":
                 html_response(self, render_summary(state, message))
@@ -739,8 +988,27 @@ def build_handler(config: AppConfig):
             if parsed.path == "/tasks":
                 html_response(self, render_tasks(state, message))
                 return
+            if parsed.path == "/task":
+                task_id = query.get("id", [""])[0]
+                task = find_task(state["tasks"], task_id)
+                if task is None:
+                    json_response(self, {"ok": False, "error": "task not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                html_response(self, render_task_detail(state, task, message))
+                return
             if parsed.path == "/opportunities":
                 html_response(self, render_opportunities(state, message))
+                return
+            if parsed.path == "/opportunity":
+                opportunity_id = query.get("id", [""])[0]
+                opportunity = find_opportunity(state["opportunities"], opportunity_id)
+                if opportunity is None:
+                    json_response(self, {"ok": False, "error": "opportunity not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                html_response(self, render_opportunity_detail(state, opportunity, message))
+                return
+            if parsed.path == "/handoffs":
+                html_response(self, render_handoffs(state, message))
                 return
             if parsed.path == "/agents":
                 html_response(self, render_agents(state, message))
@@ -750,6 +1018,14 @@ def build_handler(config: AppConfig):
                 return
             if parsed.path == "/logs":
                 html_response(self, render_logs(state, message))
+                return
+            if parsed.path == "/file":
+                raw_path = query.get("path", [""])[0]
+                path = resolve_viewable_path(config, raw_path)
+                if path is None:
+                    json_response(self, {"ok": False, "error": "file not found or not allowed"}, HTTPStatus.NOT_FOUND)
+                    return
+                html_response(self, render_file_detail(config, path, message))
                 return
             if parsed.path == "/api/summary":
                 payload = {
@@ -766,8 +1042,24 @@ def build_handler(config: AppConfig):
             if parsed.path == "/api/tasks":
                 json_response(self, state["tasks"])
                 return
+            if parsed.path == "/api/task":
+                task_id = query.get("id", [""])[0]
+                task = find_task(state["tasks"], task_id)
+                if task is None:
+                    json_response(self, {"ok": False, "error": "task not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                json_response(self, task)
+                return
             if parsed.path == "/api/opportunities":
                 json_response(self, state["opportunities"])
+                return
+            if parsed.path == "/api/opportunity":
+                opportunity_id = query.get("id", [""])[0]
+                opportunity = find_opportunity(state["opportunities"], opportunity_id)
+                if opportunity is None:
+                    json_response(self, {"ok": False, "error": "opportunity not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                json_response(self, opportunity)
                 return
             if parsed.path == "/api/agents":
                 payload = [
@@ -824,6 +1116,36 @@ def build_handler(config: AppConfig):
                 )
                 message = f"cron requested: {job_id}"
                 redirect_with_message(self, next_location, message)
+                return
+
+            if parsed.path == "/actions/promote-opportunity":
+                opportunity_id = form.get("opportunity_id", [""])[0]
+                if opportunity_id == "":
+                    redirect_with_message(self, next_location, "missing opportunity id")
+                    return
+                script_path = config.captain_workspace / "scripts/bridge_ready_review_opportunity.py"
+                result = run_command(
+                    [
+                        "python3",
+                        str(script_path),
+                        "--opportunities-path",
+                        str(config.opportunities_path),
+                        "--task-registry-path",
+                        str(config.registry_path),
+                        "--handoff-dir",
+                        str(config.handoffs_dir),
+                        "--task-owner",
+                        "aic-planner",
+                        "--task-state",
+                        "Intake",
+                        "--opportunity-id",
+                        opportunity_id,
+                        "--format",
+                        "json",
+                    ]
+                )
+                message = result["stdout"] or result["stderr"] or f"opportunity promoted: {opportunity_id}"
+                redirect_with_message(self, next_location, str(message))
                 return
 
             json_response(self, {"ok": False, "error": "not found"}, HTTPStatus.NOT_FOUND)
