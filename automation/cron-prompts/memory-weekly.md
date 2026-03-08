@@ -10,7 +10,7 @@
 前置步骤：
 
 1. 先运行：
-   - `python3 scripts/weekly_gate.py --state memory/_state/weekly_gate.json --timezone Asia/Shanghai --mode check`
+   - `python3 scripts/weekly_gate.py --state memory/_state/weekly_gate.json --timezone __TIMEZONE__ --mode check`
 2. 如果返回 `shouldRun=false`：
    - 写执行日志到 `data/exec-logs/memory-weekly/`
    - 回复：
@@ -39,7 +39,7 @@
    - 控制总量，避免滚动区变成第二个档案库
 5. 写执行日志到 `data/exec-logs/memory-weekly/`
 6. 若本次成功完成晋升与清理：
-   - 运行 `python3 scripts/weekly_gate.py --state memory/_state/weekly_gate.json --timezone Asia/Shanghai --mode mark`
+   - 运行 `python3 scripts/weekly_gate.py --state memory/_state/weekly_gate.json --timezone __TIMEZONE__ --mode mark`
 7. 最后释放锁：
    - `python3 scripts/lockfile.py release --lock memory/_state/MEMORY.lock`
 

@@ -60,3 +60,14 @@
 - 最近一次记忆整理状态
 - 连续失败任务
 - 最近执行日志索引
+
+若使用本仓库运行态脚本，推荐通过以下命令刷新：
+
+```bash
+python3 scripts/refresh_dashboard.py \
+  --registry-path tasks/registry.json \
+  --handoffs-dir handoffs \
+  --exec-logs-dir data/exec-logs \
+  --sessions-root ~/.openclaw/agents \
+  --output data/dashboard.md
+```

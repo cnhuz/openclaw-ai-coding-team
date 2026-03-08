@@ -18,7 +18,7 @@ memory/projects/<name>/
 - 当前 owner
 - 关键里程碑
 - 最近 blocker
-- 相关任务真相源入口
+- 相关任务真相源入口（优先 `tasks/registry.json`）
 
 ## `items.json`
 

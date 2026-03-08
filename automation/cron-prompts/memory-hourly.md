@@ -11,7 +11,7 @@
 
 - 禁止调用 `sessions_list` / `sessions_history`
 - 唯一事实源是 session JSONL 文件，由扫描脚本读取
-- 必须通过 `python3 scripts/scan_sessions_incremental.py --state-file memory/_state/scan_sessions_hourly.json --format md --max-chars 4000` 获取增量内容
+- 必须通过 `python3 scripts/scan_sessions_incremental.py --openclaw-dir ~/.openclaw --agent __AGENT_ID__ --state-file memory/_state/scan_sessions_hourly.json --format md --max-chars 4000` 获取增量内容
 - 扫描结果里只信任 user 消息与 assistant 最终回复；不要把 tool/system 输出写进记忆
 - 不要总结任何以 `memory-` 开头的 ok 消息，也不要总结 `NO_REPLY`
 
@@ -25,7 +25,7 @@
      - 第二行：`stats: files_with_new_bytes=0 messages_emitted=0`
      - 第三行：`updated: none`
 3. 若有新内容：
-   - 将关键信号优先 append 到当天 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
+   - 将关键信号优先 append 到当天 `memory/YYYY-MM-DD.md`
    - 只有在出现稳定偏好、关键决策、长期约束时，才更新 `MEMORY.md`
    - 写执行日志到 `data/exec-logs/memory-hourly/`
    - 回复：

@@ -1,19 +1,18 @@
 # AGENTS.md - AI Coding Team Workspace Protocol
 
-这个 workspace 属于 AI 编程团队的某个 Agent。每次启动都按以下顺序执行：
+这个文件是当前 agent 的**根行为真相源**。
 
-## 每次启动
+按 OpenClaw 原生规则，子 agent 默认只保证拿到根 `AGENTS.md` 与 `TOOLS.md`。
+因此所有关键角色边界、升级路径、交接要求，都必须直接写在这里；不要把关键规则只放在 `ROLE.md`、`SOUL.md`、`IDENTITY.md` 之类补充文件中。
+
+## 会话原则
 
 1. 如果 `BOOTSTRAP.md` 仍存在，先完成首跑初始化，再进入日常工作
-2. 读 `SOUL.md`
-3. 读 `IDENTITY.md`
-4. 如果存在 `ROLE.md`，读 `ROLE.md`
-5. 读 `USER.md`
-6. 读 `TOOLS.md`
-7. 读 `MEMORY.md`
-8. 读 `BOOT.md`
-9. 读今天与昨天的日志
-10. 若当前任务涉及 cron、备份、记忆同步、`MEMORY.md` 并发写入或定时任务排障，再读 `scripts/README.md`
+2. 先以当前 `AGENTS.md` 为准，再看 `TOOLS.md`
+3. 主 workspace 会话中，若存在 `SOUL.md`、`IDENTITY.md`、`USER.md`、`MEMORY.md`，按需补读
+4. 优先读取今天与昨天的 `memory/YYYY-MM-DD.md`
+5. 若当前任务涉及 cron、备份、记忆同步、`MEMORY.md` 并发写入或定时任务排障，再读 `scripts/README.md`
+6. `BOOT.md` 仅在启用 OpenClaw `boot-md` hook 或被显式要求做启动巡检时生效；不要假设每个子 agent / isolated cron 都自动读过它
 
 ## 记忆规则
 
@@ -25,8 +24,8 @@
   - 用户纠正偏好、规则、环境信息
   - 出现 blocker、事故、返工、上线、回滚
   - 学到新的入口、命令、路径、排障方法、可复用模式
-- 新部署优先写入 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
-- 旧的 `memory/YYYY-MM-DD.md` 只作为兼容读取，不再作为首选写入路径
+- 运行态每日日志优先写入 `memory/YYYY-MM-DD.md`
+- 若 workspace 仍保留 `memory/daily/` 分月目录，把它视为典藏/归档结构，而不是主运行写入入口
 - 高频且稳定的长期事实进 `MEMORY.md`
 - 可复用知识进 `memory/knowledge/`
 - 项目或任务级持续状态进 `memory/projects/`
@@ -40,18 +39,19 @@
 ### 确定性查找
 
 1. `MEMORY.md`
-2. `memory/glossary.md`
-3. `memory/people/`
-4. `memory/projects/`
-5. `memory/knowledge/`
-6. `memory/context/`
-7. `memory/post-mortems.md`
+2. `memory/YYYY-MM-DD.md`
+3. `memory/glossary.md`
+4. `memory/people/`
+5. `memory/projects/`
+6. `memory/knowledge/`
+7. `memory/context/`
+8. `memory/post-mortems.md`
 
 ### 模糊查找
 
 如果问题是“之前是不是讨论过 X”“这件事以前怎么做过”，优先用语义搜索或等价检索，而不是遍历所有文件。
 
-检索历史材料时，优先把 `memory/daily/`、`memory/weekly/`、`memory/archive/`、`data/exec-logs/` 当作语料区。
+检索历史材料时，优先把 `memory/`、`memory/weekly/`、`memory/archive/`、`data/exec-logs/` 当作语料区。
 
 ### 先解码再执行
 

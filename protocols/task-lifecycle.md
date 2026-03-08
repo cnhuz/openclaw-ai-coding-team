@@ -37,6 +37,8 @@ Intake
 任务状态本身必须写入单一真相源；本文件定义的是允许流转，不是状态存储位置。
 详见：`protocols/task-source-of-truth.md`
 
+若使用本地 JSON 真相源，推荐通过 `scripts/update_task_registry.py` 完成状态切换，避免手工多处改写。
+
 ## 回退规则
 
 - 研究结论不足、目标不清、范围失控：回到 `Researching` 或 `Scoped`
@@ -48,7 +50,7 @@ Intake
 ## 状态切换即记忆
 
 - 每次进入新状态或离开旧状态，当前 owner 都要在同一轮把关键变化写入当日日志
-- 新部署优先使用 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
+- 运行态优先使用 `memory/YYYY-MM-DD.md`
 - 关键决策、用户纠正、blocker、事故、返工、上线、回滚，不得拖到任务关闭后再补记
 - `aic-curator` 负责后续分类、提升、去重；不是首次捕获者
 - `aic-reflector` 负责复盘制度问题；不是首次捕获者

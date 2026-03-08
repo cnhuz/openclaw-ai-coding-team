@@ -6,14 +6,15 @@
 2. 读 `IDENTITY.md`
 3. 读 `USER.md`
 4. 读 `MEMORY.md`
-5. 看任务真相源中的活跃项与 blocker
-6. 看今天与昨天的日志
+5. 优先用 `python3 scripts/query_task_registry.py --path tasks/registry.json --view captain --format md` 查看活跃项；若要聚焦阻塞，再加 `--blocked-only`
+6. 若存在 `data/dashboard.md`，优先看最近看板摘要；若已过时，可运行 `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --sessions-root ~/.openclaw/agents --output data/dashboard.md`
+7. 看今天与昨天的日志
 
 ## Memory Scope
 
 - 重点记录：优先级、关键决策、待裁决事项、重要阻塞
 - 高频信息提升到 `MEMORY.md`
-- 详细过程优先写入当日日志 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
+- 详细过程优先写入当日日志 `memory/YYYY-MM-DD.md`
 - 与项目推进相关的长期信息写入 `memory/projects/`
 - 如发现状态真相源与记忆冲突，先以真相源为准，再要求修正记忆
 
@@ -25,7 +26,7 @@
 
 ## Collaboration
 
-- 只可调用：`aic-planner`, `aic-reflector`
+- 只可调用：`aic-planner`, `aic-dispatcher`, `aic-reflector`
 - 只由你直接对老板汇报
 - 交接必须包含：任务ID、结论、证据、阻塞、下一负责人
 

@@ -1,6 +1,8 @@
 {
   "agents": {
     "defaults": {
+      "skipBootstrap": true,
+      "userTimezone": "Asia/Shanghai",
       "subagents": {
         "maxConcurrent": 4
       }
@@ -9,6 +11,7 @@
       {
         "id": "aic-captain",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-captain",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-captain",
         "heartbeat": {
           "every": "30m",
           "target": "last"
@@ -16,6 +19,7 @@
         "subagents": {
           "allowAgents": [
             "aic-planner",
+            "aic-dispatcher",
             "aic-reflector"
           ]
         }
@@ -23,6 +27,7 @@
       {
         "id": "aic-planner",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-planner",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-planner",
         "subagents": {
           "allowAgents": [
             "aic-researcher",
@@ -33,6 +38,7 @@
       {
         "id": "aic-reviewer",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-reviewer",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-reviewer",
         "subagents": {
           "allowAgents": []
         }
@@ -40,6 +46,7 @@
       {
         "id": "aic-dispatcher",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-dispatcher",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-dispatcher",
         "heartbeat": {
           "every": "15m",
           "target": "last"
@@ -57,6 +64,7 @@
       {
         "id": "aic-researcher",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-researcher",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-researcher",
         "subagents": {
           "allowAgents": []
         }
@@ -64,6 +72,7 @@
       {
         "id": "aic-builder",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-builder",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-builder",
         "subagents": {
           "allowAgents": []
         }
@@ -71,6 +80,7 @@
       {
         "id": "aic-tester",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-tester",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-tester",
         "subagents": {
           "allowAgents": []
         }
@@ -78,6 +88,7 @@
       {
         "id": "aic-releaser",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-releaser",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-releaser",
         "subagents": {
           "allowAgents": []
         }
@@ -85,6 +96,7 @@
       {
         "id": "aic-curator",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-curator",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-curator",
         "subagents": {
           "allowAgents": []
         }
@@ -92,6 +104,7 @@
       {
         "id": "aic-reflector",
         "workspace": "<OPENCLAW_HOME>/workspace-aic-reflector",
+        "agentDir": "<OPENCLAW_HOME>/agents/aic-reflector",
         "subagents": {
           "allowAgents": [
             "aic-curator"

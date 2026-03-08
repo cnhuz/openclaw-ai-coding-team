@@ -17,6 +17,6 @@
 
 ## Pointers
 
-- 任务真相源：
+- 任务真相源：`tasks/registry.json`
 - 相关执行日志：
 - 相关知识：

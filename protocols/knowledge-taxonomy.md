@@ -19,8 +19,8 @@
 | `memory/projects/<name>/items.json` | 项目事实链与 supersede 历史 |
 | `memory/knowledge/` | 可复用知识 |
 | `memory/post-mortems.md` | 失败复盘 |
-| `memory/daily/YYYY-MM/YYYY-MM-DD.md` | 推荐的每日日志路径 |
-| `memory/YYYY-MM-DD.md` | 兼容旧式每日日志路径 |
+| `memory/YYYY-MM-DD.md` | 推荐的运行态每日日志路径 |
+| `memory/daily/YYYY-MM/YYYY-MM-DD.md` | 可选的归档/兼容目录结构 |
 | `memory/weekly/YYYY-WXX.md` | 周级巩固与归档摘要 |
 | `memory/archive/` | 已退役但仍需保留的旧知识或快照 |
 | `memory/context/environment.md` | 环境、部署、机器、基础设施 |

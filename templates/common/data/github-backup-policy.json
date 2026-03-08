@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "provider": "github",
+  "owner": null,
+  "visibility": "private",
+  "repo_name": null,
+  "remote_name": "origin",
+  "branch": "main",
+  "auto_create_repo": true,
+  "auto_pull": true,
+  "auto_push": true,
+  "allow_git_init": true
+}

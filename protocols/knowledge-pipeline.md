@@ -15,11 +15,11 @@
 
 ## 原始材料来源
 
-- `memory/daily/YYYY-MM/YYYY-MM-DD.md` 或兼容的 `memory/YYYY-MM-DD.md`
+- `memory/YYYY-MM-DD.md`，必要时兼容 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
 - `memory/weekly/YYYY-WXX.md`
 - `memory/post-mortems.md`
 - `data/exec-logs/`
-- `tasks/registry.md` 或外部任务系统
+- `tasks/registry.json` 或外部任务系统
 - handoff / verification / release / reflection 产物
 
 ## 五类高价值信号
@@ -88,7 +88,7 @@ data/knowledge-proposals/YYYY-MM-DD/
 {
   "type": "design_decision | reusable_experience | terminology | entity_change | repeated_pattern",
   "confidence": "high | medium | low",
-  "source": "memory/daily/YYYY-MM/YYYY-MM-DD.md",
+  "source": "memory/YYYY-MM-DD.md",
   "destination": "memory/knowledge/fw-design-decisions.md",
   "action": "append | update | supersede | archive",
   "summary": "一句话摘要"

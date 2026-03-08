@@ -2,6 +2,12 @@
 
 所有 agent 之间的交接都必须使用同一份合同，避免“说了很多但没人能接着干”。
 
+若使用本仓库的运行态模板，推荐：
+
+- handoff 文件落到 `handoffs/YYYY-MM-DD/`
+- 通过 `python3 scripts/create_handoff.py` 生成
+- 若 handoff 改变了任务 owner / state / next step，同步更新 `tasks/registry.json`
+
 ## 必填字段
 
 ```md
@@ -91,3 +97,28 @@ Breakpoint: <若任务未闭合，写恢复入口；已闭合则写 无>
 - 不允许下一负责人为空
 - 不允许把“猜测”写成“结论”
 - 任务未闭合时，不允许缺少 `Breakpoint`
+
+## 推荐运行入口
+
+示例：
+
+```bash
+python3 scripts/create_handoff.py \
+  --task-id TASK-001 \
+  --current-stage Building \
+  --goal "完成实现并转给测试" \
+  --deliverable "实现 diff + 验证建议" \
+  --evidence src/app.ts \
+  --evidence data/exec-logs/build-sprint/2026-03-07-1500.md \
+  --risk "无" \
+  --next-owner aic-tester \
+  --breakpoint "测试需先准备 fixture" \
+  --from-owner aic-builder \
+  --extra-field "代码改动摘要=完成核心实现，剩余验证由 tester 承接" \
+  --sync-registry \
+  --registry-path tasks/registry.json \
+  --sync-state Verifying \
+  --sync-owner aic-tester \
+  --sync-next-step "执行回归并补 fixture" \
+  --sync-append-evidence verification-plan.md
+```

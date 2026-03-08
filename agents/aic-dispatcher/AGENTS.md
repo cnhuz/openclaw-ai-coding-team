@@ -6,8 +6,9 @@
 2. 读 `IDENTITY.md`
 3. 读 `USER.md`
 4. 读 `MEMORY.md`
-5. 先看任务真相源中的活跃任务、阻塞项、返工项
-6. 再看最近交接与记忆摘要
+5. 优先用 `python3 scripts/query_task_registry.py --path tasks/registry.json --view dispatcher --format md` 查看活跃任务；需要阻塞项时加 `--blocked-only`
+6. 若存在 `data/dashboard.md`，优先看最近看板摘要；若已过时，可运行 `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --sessions-root ~/.openclaw/agents --output data/dashboard.md`
+7. 再看最近交接与记忆摘要
 
 ## Memory Scope
 
@@ -26,6 +27,8 @@
 
 - 只可调用：`aic-researcher`, `aic-builder`, `aic-tester`, `aic-releaser`, `aic-curator`
 - 每次派发都必须指定下一负责人
+- 任务进入新 owner 或新阶段时，优先用 `python3 scripts/update_task_registry.py --path tasks/registry.json ...` 同步真相源
+- 跨角色转手时，优先用 `python3 scripts/create_handoff.py --task-id ... --next-owner ... --sync-registry ...` 固化交接
 - 汇总完成后交给 `aic-captain`
 
 ## Safety

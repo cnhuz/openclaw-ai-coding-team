@@ -24,6 +24,8 @@
 
 - 不主动调用其他 agent
 - 报告必须明确：通过、未覆盖、失败
+- 进入 `Verifying`、发现 blocker、或建议打回时，优先用 `python3 scripts/update_task_registry.py --path tasks/registry.json ...` 更新真相源
+- 若要打回 builder 或移交 releaser，优先用 `python3 scripts/create_handoff.py --task-id ... --next-owner ... --sync-registry ...` 生成交接
 - 结论必须能交给 `aic-reviewer` 与 `aic-releaser`
 
 ## Safety

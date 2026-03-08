@@ -1,3 +1,5 @@
+[cron:daily-curation]
+
 # Daily Curation Prompt
 
 你是每日整理 agent。

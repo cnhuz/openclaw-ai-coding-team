@@ -30,8 +30,10 @@
 - `templates/common/BOOTSTRAP.md`
 - `templates/common/MEMORY.md`
 - `templates/common/.gitignore`
+- `templates/common/tasks/registry.json`
 - `templates/common/tasks/registry.md`
 - `templates/common/data/dashboard.md`
+- `templates/common/data/github-backup-policy.json`
 - `templates/common/data/exec-logs/SPEC.md`
 - `templates/common/data/knowledge-proposals/README.md`
 - `templates/common/data/knowledge-proposals/TEMPLATE.json`
@@ -52,7 +54,7 @@
 
 再复制角色文件：
 
-- `agents/<agent-id>/AGENTS.md` → workspace 根部 `ROLE.md`
+- `agents/<agent-id>/AGENTS.md` → 合并进 workspace 根部 `AGENTS.md`
 - `agents/<agent-id>/SOUL.md`
 - `agents/<agent-id>/IDENTITY.md`
 - `agents/<agent-id>/HEARTBEAT.md`
@@ -61,21 +63,23 @@
 ## 推荐覆盖顺序
 
 1. 复制公共模板
-2. 将角色专属 `AGENTS.md` 复制为 workspace 根部 `ROLE.md`
+2. 将角色专属 `AGENTS.md` 合并进 workspace 根部 `AGENTS.md`
 3. 复制其余角色文件
 4. 将 `MEMORY.seed.md` 内容合并进 workspace 根部 `MEMORY.md`
 5. 在 `USER.md` 中补齐你的真实信息与偏好
 6. 在 `TOOLS.md` 中补齐机器、SSH、部署环境、账号等本地特有信息
-7. 按 `config/openclaw.agents.snippet.json` 合并 agent 配置
+7. 按 `config/openclaw.agents.snippet.json` 与 `config/openclaw.hooks.snippet.json` 合并 OpenClaw 配置
 8. 若当前 workspace 还不是 Git 仓库，执行 `git init`、检查 `.gitignore`、完成首个提交
 9. 推荐为该 workspace 创建独立私有远程并完成首次推送
 10. 将 `automation/scripts/*.py` 复制到真实 workspace 的 `scripts/`
-11. 按 `automation/CRON.md` 安装定时备份、复盘、沉淀与 sprint 任务
+11. 按 `automation/CRON.md` 安装定时备份、复盘、沉淀与 sprint 任务；也可以直接运行 `setup/install-openclaw-automation.sh`
 12. 把 `automation/cron-prompts/` 中需要的 prompt 文件同步到运行时配置
 13. 若启用完整记忆自动化，再额外安装 `memory-hourly` 与 `memory-weekly`
-14. 选定任务真相源：优先外部任务系统；没有时至少使用 `tasks/registry.md`
-15. 将首跑结果优先写入当天 `memory/daily/YYYY-MM/YYYY-MM-DD.md`
+    - 默认优先给 `aic-captain`、`aic-planner`、`aic-dispatcher`
+14. 选定任务真相源：优先外部任务系统；没有时至少使用 `tasks/registry.json`
+15. 将首跑结果优先写入当天 `memory/YYYY-MM-DD.md`
 16. 完成验证后，移除或归档 `BOOTSTRAP.md`
+17. 触发一次 `openclaw system event --mode now`，验证闭环能被点火
 
 ## 为什么不直接生成真实 workspace
 
@@ -105,6 +109,7 @@
 - 建立独立 Git 备份基线
 - 显式设置时区为 `Asia/Shanghai`
 - 安装每日 `00:00 / 00:10 / 00:20` 的 cron 任务
+- 安装 `aic-captain` 的 dashboard refresh cron
 - 建立任务真相源与执行日志目录
 - 将首跑结果写入记忆
 
@@ -120,12 +125,13 @@
 
 除记忆目录外，建议每个 workspace 还包含：
 
-- `tasks/registry.md`：任务真相源的本地兜底
+- `tasks/registry.json`：任务真相源的本地兜底
+- `tasks/registry.md`：人工备注与外部入口
 - `data/exec-logs/`：自动化执行日志
 - `data/dashboard.md`：自动化巡检摘要
 - `data/knowledge-proposals/`：待审核知识提案
 - `memory/_state/`：cron 游标、锁与 gate 状态
-- `memory/daily/`：分月每日日志
+- `memory/daily/`：可选归档目录
 - `memory/weekly/`：周级巩固
 - `memory/archive/`：历史归档
 - `scripts/`：增量扫描、锁、weekly gate 等 helper scripts

@@ -25,6 +25,8 @@
   - 用途：多个 job 可能同时写 `MEMORY.md` 时加锁
 - `scripts/weekly_gate.py`
   - 用途：周级任务采用“每天触发 + 每周至少成功一次” gate
+- `scripts/git_backup_health.py`
+  - 用途：自动建立 Git 基线、GitHub 远程、检查 `pull/push`
 
 使用边界：
 
@@ -37,11 +39,34 @@
 当前模板默认的真实 workspace 运行态结构是：
 
 - `AGENTS.md`：公共规则入口
-- `ROLE.md`：角色专属补充规则
+- `BOOT.md`：可选的 `boot-md` 启动巡检文件
 - `scripts/`：运行态工具
 - `memory/`：记忆与知识
 - `data/`：执行日志、dashboard、知识提案
+- `data/github-backup-policy.json`：GitHub 备份与自动建仓策略
+- `handoffs/`：结构化交接产物
 - `tasks/`：本地任务真相源
+
+## OpenClaw Native Notes
+
+推荐显式记录：
+
+- `workspace` 路径
+- `agentDir` 路径
+- `agents.defaults.skipBootstrap` 的当前值
+- 是否启用了 `boot-md`
+- 是否启用了 `session-memory`
+- 当前 `userTimezone`
+
+## GitHub Backup Policy
+
+若启用了 `daily-backup` 自治备份，建议显式记录：
+
+- `data/github-backup-policy.json` 的真实路径
+- GitHub owner / org
+- 默认可见性
+- 是否允许自动创建仓库
+- 是否允许自动 `push`
 
 ## Skill 源
 

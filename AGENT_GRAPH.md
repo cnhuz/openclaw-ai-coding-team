@@ -22,7 +22,7 @@
 
 | Caller | Allowed Callees |
 |--------|------------------|
-| `aic-captain` | `aic-planner`, `aic-reflector` |
+| `aic-captain` | `aic-planner`, `aic-dispatcher`, `aic-reflector` |
 | `aic-planner` | `aic-researcher`, `aic-reviewer` |
 | `aic-reviewer` | 无 |
 | `aic-dispatcher` | `aic-researcher`, `aic-builder`, `aic-tester`, `aic-releaser`, `aic-curator` |

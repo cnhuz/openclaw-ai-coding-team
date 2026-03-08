@@ -24,6 +24,8 @@
 
 - 不主动调用其他 agent
 - 输出必须包含：发布记录、回滚方案、观察结果
+- 进入 `Staging`、`Released`、`Observing` 或发布受阻时，优先用 `python3 scripts/update_task_registry.py --path tasks/registry.json ...` 更新真相源
+- 若发布受阻或完成发布交接，优先用 `python3 scripts/create_handoff.py --task-id ... --next-owner ... --sync-registry ...` 固化交接
 - 若发布受阻，回交 `aic-dispatcher`
 
 ## Safety

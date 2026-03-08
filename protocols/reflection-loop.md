@@ -5,7 +5,7 @@
 ## 标准闭环
 
 1. **备份**：先完成 workspace 备份
-2. **回放**：读取当日日志、任务真相源、最近执行日志
+2. **回放**：读取当日日志、任务真相源（优先 `tasks/registry.json`）、最近执行日志
 3. **诊断**：识别误解、返工、低效、用户纠正、制度缺口
 4. **沉淀**：写入 `memory/post-mortems.md`、`memory/knowledge/sys-*.md`、必要时更新 `MEMORY.md`
 5. **调优提案**：提出需要修改的 `AGENTS.md`、`TOOLS.md`、cron prompt、技能治理或脚本草稿
@@ -24,7 +24,7 @@
 - `TOOLS.md`：本机入口、技能源、部署信息
 - `automation/cron-prompts/`：定时任务 prompt 源文件
 - `automation/CRON.md`：时间表与角色分工
-- `tasks/registry.md` 或外部任务系统流程
+- `tasks/registry.json` 或外部任务系统流程
 
 ## 反思红线
 
