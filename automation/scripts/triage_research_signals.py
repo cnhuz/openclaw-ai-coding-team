@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 STATUS_ORDER = {
@@ -160,12 +161,69 @@ def derive_priority(score: float) -> str:
     return "P4"
 
 
-def derive_status(existing_status: str, score: float, signal_count: int, source_diversity: int, candidate_threshold: float, ready_threshold: float) -> str:
+def evidence_domains(urls: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for url in urls:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower().strip()
+        if not domain or domain in seen:
+            continue
+        seen.add(domain)
+        result.append(domain)
+    return result
+
+
+def ready_review_evidence_ok(
+    evidence_count: int,
+    evidence_domain_diversity: int,
+    has_official_source: bool,
+    signal_count: int,
+    source_diversity: int,
+    card_path: Any,
+) -> bool:
+    if isinstance(card_path, str) and card_path.strip() and evidence_count >= 3 and evidence_domain_diversity >= 2:
+        return True
+    if has_official_source and evidence_count >= 3 and evidence_domain_diversity >= 2:
+        return True
+    if evidence_count >= 5 and evidence_domain_diversity >= 3:
+        return True
+    if has_official_source and signal_count >= 3 and source_diversity >= 3:
+        return True
+    return False
+
+
+def derive_status(
+    existing_status: str,
+    score: float,
+    signal_count: int,
+    source_diversity: int,
+    candidate_threshold: float,
+    ready_threshold: float,
+    evidence_count: int,
+    evidence_domain_diversity: int,
+    has_official_source: bool,
+    card_path: Any,
+) -> str:
     if existing_status in {"promoted", "rejected"}:
         return existing_status
-    if existing_status == "ready_review" and score >= candidate_threshold:
+    if existing_status == "ready_review" and score >= candidate_threshold and ready_review_evidence_ok(
+        evidence_count,
+        evidence_domain_diversity,
+        has_official_source,
+        signal_count,
+        source_diversity,
+        card_path,
+    ):
         return "ready_review"
-    if score >= ready_threshold and (source_diversity >= 2 or signal_count >= 3):
+    if score >= ready_threshold and ready_review_evidence_ok(
+        evidence_count,
+        evidence_domain_diversity,
+        has_official_source,
+        signal_count,
+        source_diversity,
+        card_path,
+    ):
         return "ready_review"
     if score >= candidate_threshold:
         return "candidate"
@@ -375,6 +433,10 @@ def build_opportunities(
                 if isinstance(entry, dict) and isinstance(entry.get("title"), str) and entry.get("title")
             }
         )
+        evidence_domains_list = evidence_domains(evidence_urls)
+        evidence_count = len(evidence_urls)
+        evidence_domain_diversity = len(evidence_domains_list)
+        has_official_source = "official-sites" in source_ids
         latest_seen = max(parse_iso(item.get("discovered_at")) for item in group_signals)
         freshness_hours = max((datetime.now().astimezone().timestamp() - latest_seen) / 3600, 0)
         source_diversity = len(source_ids)
@@ -393,7 +455,18 @@ def build_opportunities(
         confidence = clamp(sum(confidence_values) / len(confidence_values))
         importance = clamp(sum(importance_values) / len(importance_values))
         existing_status = str(existing.get("status", "watchlist"))
-        status = derive_status(existing_status, score, signal_count, source_diversity, candidate_threshold, ready_threshold)
+        status = derive_status(
+            existing_status,
+            score,
+            signal_count,
+            source_diversity,
+            candidate_threshold,
+            ready_threshold,
+            evidence_count,
+            evidence_domain_diversity,
+            has_official_source,
+            existing.get("card_path"),
+        )
         recommendation = derive_action(status)
 
         opportunity = {
@@ -415,6 +488,10 @@ def build_opportunities(
             "keywords": keywords,
             "evidence_urls": evidence_urls,
             "evidence_titles": evidence_titles,
+            "evidence_count": evidence_count,
+            "evidence_domain_diversity": evidence_domain_diversity,
+            "evidence_domains": evidence_domains_list,
+            "has_official_source": has_official_source,
             "card_path": existing.get("card_path"),
             "task_id": existing.get("task_id"),
             "notes": existing.get("notes", []),
@@ -462,6 +539,9 @@ def render_md(opportunities: list[dict[str, Any]], signal_count: int) -> str:
                 f"- recommended_action: {item['recommended_action']}",
                 f"- signal_count: {item['signal_count']}",
                 f"- source_diversity: {item['source_diversity']}",
+                f"- evidence_count: {item.get('evidence_count', 0)}",
+                f"- evidence_domain_diversity: {item.get('evidence_domain_diversity', 0)}",
+                f"- has_official_source: {item.get('has_official_source', False)}",
                 f"- topic_ids: {', '.join(item['topic_ids']) or 'none'}",
                 f"- evidence_urls: {', '.join(item['evidence_urls'][:3]) or 'none'}",
             ]

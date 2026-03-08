@@ -92,6 +92,9 @@ def build_card(opportunity: dict[str, Any], generated_at: str) -> str:
         f"- keywords: {keyword_text}",
         f"- signal_count: {opportunity.get('signal_count', 0)}",
         f"- source_diversity: {opportunity.get('source_diversity', 0)}",
+        f"- evidence_count: {opportunity.get('evidence_count', 0)}",
+        f"- evidence_domain_diversity: {opportunity.get('evidence_domain_diversity', 0)}",
+        f"- has_official_source: {opportunity.get('has_official_source', False)}",
     ]
     return "\n".join(lines) + "\n"
 
