@@ -149,6 +149,43 @@ def blocked_terms(profile: dict[str, Any]) -> list[str]:
     return result
 
 
+def learned_source_bias(profile: dict[str, Any]) -> dict[str, float]:
+    learning = profile.get("learning")
+    if not isinstance(learning, dict):
+        return {}
+    values = learning.get("source_bias")
+    if not isinstance(values, dict):
+        return {}
+    result: dict[str, float] = {}
+    for source_id, bias in values.items():
+        if not isinstance(source_id, str) or not source_id:
+            continue
+        if not isinstance(bias, (int, float)):
+            continue
+        result[source_id] = float(bias)
+    return result
+
+
+def low_yield_sources(profile: dict[str, Any]) -> set[str]:
+    learning = profile.get("learning")
+    if not isinstance(learning, dict):
+        return set()
+    values = learning.get("low_yield_sources")
+    if not isinstance(values, list):
+        return set()
+    return {item for item in values if isinstance(item, str) and item}
+
+
+def high_yield_sources(profile: dict[str, Any]) -> set[str]:
+    learning = profile.get("learning")
+    if not isinstance(learning, dict):
+        return set()
+    values = learning.get("high_yield_sources")
+    if not isinstance(values, list):
+        return set()
+    return {item for item in values if isinstance(item, str) and item}
+
+
 def topic_score(profile: dict[str, Any], opportunities: list[dict[str, Any]]) -> float:
     learning = profile.get("learning")
     if isinstance(learning, dict):
@@ -304,6 +341,9 @@ def build_plan(
         topic_keywords = " ".join(normalize_list(profile.get("keywords"))[:5])
         topic_blocked_terms = blocked_terms(profile)
         preferred_sources = set(normalize_list(profile.get("source_preferences")))
+        learned_high_yield = high_yield_sources(profile)
+        learned_low_yield = low_yield_sources(profile)
+        source_bias = learned_source_bias(profile)
         topic_weight = topic_score(profile, [item for item in opportunities if isinstance(item, dict)])
 
         for source in sources:
@@ -316,12 +356,17 @@ def build_plan(
             label = source.get("label")
             if not isinstance(source_id, str) or not isinstance(label, str):
                 continue
+            if source_id in learned_low_yield and source_id not in preferred_sources:
+                continue
 
             source_learning = source_scores.get(source_id, {})
             learning_score = float(source_learning.get("score", 1.0) or 1.0)
             source_weight = priority_score(source.get("priority")) * learning_score * topic_source_affinity(source, topic_id)
             if source_id in preferred_sources:
                 source_weight += 0.18
+            if source_id in learned_high_yield:
+                source_weight += 0.12
+            source_weight += source_bias.get(source_id, 0.0)
 
             templates = normalize_list(source.get("search_templates"))
             if not templates:
@@ -342,6 +387,8 @@ def build_plan(
                     reason_parts: list[str] = []
                     if source_id in preferred_sources:
                         reason_parts.append("preferred-source")
+                    if source_id in learned_high_yield:
+                        reason_parts.append("learned-high-yield")
                     if topic_id in set(normalize_list(source.get("topic_tags"))):
                         reason_parts.append("topic-fit")
                     if not reason_parts:

@@ -37,4 +37,5 @@
 - 经常产出噪音的来源会被降权
 - 被晋升、被否决、持续观察的机会都会回写到 `topic_profiles.json` 学习统计
 - `exploration-learning` 还会反向生成 `query_expansions` 与 `blocked_terms`
+- `exploration-learning` 还会学习每个 topic 的 `high_yield_sources`、`low_yield_sources` 与 `source_bias`
 - 第一版先学习“来源权重”和“主题热度”，后续再逐步学习查询模板与细分渠道

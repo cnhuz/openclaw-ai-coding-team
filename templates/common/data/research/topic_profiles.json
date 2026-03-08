@@ -36,7 +36,10 @@
         "rejected_count": 0,
         "last_signal_at": null,
         "query_expansions": [],
-        "blocked_terms": []
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
       }
     },
     {
@@ -72,7 +75,10 @@
         "rejected_count": 0,
         "last_signal_at": null,
         "query_expansions": [],
-        "blocked_terms": []
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
       }
     },
     {
@@ -109,7 +115,10 @@
         "rejected_count": 0,
         "last_signal_at": null,
         "query_expansions": [],
-        "blocked_terms": []
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
       }
     },
     {
@@ -146,7 +155,10 @@
         "rejected_count": 0,
         "last_signal_at": null,
         "query_expansions": [],
-        "blocked_terms": []
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
       }
     }
   ]

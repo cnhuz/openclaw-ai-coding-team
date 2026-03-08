@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from lockfile import acquire, release
+
 
 STATUS_ORDER = {
     "ready_review": 0,
@@ -556,30 +558,38 @@ def main() -> int:
     parser.add_argument("--topics", default="data/research/topic_profiles.json")
     parser.add_argument("--source-scores", default="data/research/source_scores.json")
     parser.add_argument("--opportunities", default="data/research/opportunities.json")
+    parser.add_argument("--lock", default="data/research/_state/research.lock")
     parser.add_argument("--lookback-hours", type=int, default=168)
     parser.add_argument("--candidate-threshold", type=float, default=0.58)
     parser.add_argument("--ready-threshold", type=float, default=0.74)
     parser.add_argument("--format", choices=["json", "md"], default="json")
     args = parser.parse_args()
+    lock_path = Path(args.lock).expanduser()
+    lock_result = acquire(lock_path, timeout=120, stale_seconds=7200)
+    if not lock_result.get("ok"):
+        raise SystemExit(f"failed to acquire research lock: {lock_path}")
 
-    signals = load_signals(Path(args.signals_root).expanduser(), args.lookback_hours)
-    sources_data = load_json(Path(args.sources).expanduser(), {"sources": []})
-    topics_path = Path(args.topics).expanduser()
-    topics_data = load_json(topics_path, {"profiles": []})
-    opportunities_path = Path(args.opportunities).expanduser()
-    existing_payload = load_json(opportunities_path, {"opportunities": []})
+    try:
+        signals = load_signals(Path(args.signals_root).expanduser(), args.lookback_hours)
+        sources_data = load_json(Path(args.sources).expanduser(), {"sources": []})
+        topics_path = Path(args.topics).expanduser()
+        topics_data = load_json(topics_path, {"profiles": []})
+        opportunities_path = Path(args.opportunities).expanduser()
+        existing_payload = load_json(opportunities_path, {"opportunities": []})
 
-    opportunities = build_opportunities(existing_payload, signals, args.candidate_threshold, args.ready_threshold)
-    payload = {
-        "schemaVersion": 1,
-        "updatedAt": now_iso(),
-        "opportunities": opportunities,
-    }
-    opportunities_path.parent.mkdir(parents=True, exist_ok=True)
-    opportunities_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        opportunities = build_opportunities(existing_payload, signals, args.candidate_threshold, args.ready_threshold)
+        payload = {
+            "schemaVersion": 1,
+            "updatedAt": now_iso(),
+            "opportunities": opportunities,
+        }
+        opportunities_path.parent.mkdir(parents=True, exist_ok=True)
+        opportunities_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    update_source_scores(Path(args.source_scores).expanduser(), sources_data, signals, opportunities)
-    update_topic_profiles(topics_path, topics_data, signals, opportunities)
+        update_source_scores(Path(args.source_scores).expanduser(), sources_data, signals, opportunities)
+        update_topic_profiles(topics_path, topics_data, signals, opportunities)
+    finally:
+        release(lock_path)
 
     if args.format == "md":
         print(render_md(opportunities, len(signals)), end="")

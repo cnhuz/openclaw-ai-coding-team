@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from lockfile import acquire, release
+
 
 def now_iso() -> str:
     return datetime.now().astimezone().replace(microsecond=0).isoformat()
@@ -62,6 +64,31 @@ def tokenize_title(title: str) -> list[str]:
 
 def top_terms(counter: Counter[str], limit: int) -> list[str]:
     return [item for item, _ in counter.most_common(limit)]
+
+
+def top_sources(counter: Counter[str], limit: int, minimum: int = 1) -> list[str]:
+    result: list[str] = []
+    for item, count in counter.most_common():
+        if count < minimum:
+            continue
+        result.append(item)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def source_biases(positive: Counter[str], negative: Counter[str]) -> dict[str, float]:
+    result: dict[str, float] = {}
+    for source_id in sorted(set(positive) | set(negative)):
+        bias = positive[source_id] * 0.08 - negative[source_id] * 0.1
+        if bias > 0.24:
+            bias = 0.24
+        if bias < -0.24:
+            bias = -0.24
+        if bias == 0:
+            continue
+        result[source_id] = round(bias, 3)
+    return result
 
 
 def learn_from_opportunities(
@@ -118,10 +145,21 @@ def learn_from_opportunities(
         topic_items = by_topic.get(topic_id, [])
         strong_items = [item for item in topic_items if item.get("status") in {"candidate", "ready_review", "promoted"}]
         rejected_items = [item for item in topic_items if item.get("status") == "rejected"]
+        watchlist_items = [item for item in topic_items if item.get("status") == "watchlist"]
 
         query_counter: Counter[str] = Counter()
         blocked_counter: Counter[str] = Counter()
+        positive_source_counter: Counter[str] = Counter()
+        negative_source_counter: Counter[str] = Counter()
         for item in strong_items:
+            status = str(item.get("status", "candidate"))
+            source_weight = 1
+            if status == "ready_review":
+                source_weight = 2
+            elif status == "promoted":
+                source_weight = 3
+            for source_id in normalize_list(item.get("source_ids")):
+                positive_source_counter[source_id] += source_weight
             for keyword in normalize_list(item.get("keywords")):
                 query_counter[keyword] += 1
             title = item.get("title")
@@ -130,6 +168,8 @@ def learn_from_opportunities(
                     query_counter[token] += 1
 
         for item in rejected_items:
+            for source_id in normalize_list(item.get("source_ids")):
+                negative_source_counter[source_id] += 2
             for keyword in normalize_list(item.get("keywords")):
                 blocked_counter[keyword.lower()] += 1
             title = item.get("title")
@@ -137,8 +177,18 @@ def learn_from_opportunities(
                 for token in tokenize_title(title):
                     blocked_counter[token] += 1
 
+        for item in watchlist_items:
+            updated_at = parse_iso(item.get("updated_at"))
+            if updated_at is None or updated_at >= stale_cutoff:
+                continue
+            for source_id in normalize_list(item.get("source_ids")):
+                negative_source_counter[source_id] += 1
+
         learning["query_expansions"] = top_terms(query_counter, 6)
         learning["blocked_terms"] = top_terms(blocked_counter, 6)
+        learning["high_yield_sources"] = top_sources(positive_source_counter, 4, minimum=1)
+        learning["low_yield_sources"] = top_sources(negative_source_counter, 4, minimum=2)
+        learning["source_bias"] = source_biases(positive_source_counter, negative_source_counter)
         learning["last_learning_at"] = now_iso()
         updated_profiles += 1
 
@@ -151,20 +201,29 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Learn query expansions and blocked terms from exploration outcomes.")
     parser.add_argument("--topics", default="data/research/topic_profiles.json")
     parser.add_argument("--opportunities", default="data/research/opportunities.json")
+    parser.add_argument("--lock", default="data/research/_state/research.lock")
     parser.add_argument("--stale-days", type=int, default=7)
     parser.add_argument("--format", choices=["json", "md"], default="json")
     args = parser.parse_args()
 
     topics_path = Path(args.topics).expanduser()
     opportunities_path = Path(args.opportunities).expanduser()
-    topics_payload = load_json(topics_path, {"profiles": []})
-    opportunities_payload = load_json(opportunities_path, {"opportunities": []})
-    topics_payload, summary = learn_from_opportunities(topics_payload, opportunities_payload, args.stale_days)
+    lock_path = Path(args.lock).expanduser()
+    lock_result = acquire(lock_path, timeout=120, stale_seconds=7200)
+    if not lock_result.get("ok"):
+        raise SystemExit(f"failed to acquire research lock: {lock_path}")
 
-    topics_path.parent.mkdir(parents=True, exist_ok=True)
-    opportunities_path.parent.mkdir(parents=True, exist_ok=True)
-    topics_path.write_text(json.dumps(topics_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    opportunities_path.write_text(json.dumps(opportunities_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        topics_payload = load_json(topics_path, {"profiles": []})
+        opportunities_payload = load_json(opportunities_path, {"opportunities": []})
+        topics_payload, summary = learn_from_opportunities(topics_payload, opportunities_payload, args.stale_days)
+
+        topics_path.parent.mkdir(parents=True, exist_ok=True)
+        opportunities_path.parent.mkdir(parents=True, exist_ok=True)
+        topics_path.write_text(json.dumps(topics_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        opportunities_path.write_text(json.dumps(opportunities_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    finally:
+        release(lock_path)
 
     if args.format == "md":
         lines = [

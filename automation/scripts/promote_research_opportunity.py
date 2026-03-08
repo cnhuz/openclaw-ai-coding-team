@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from lockfile import acquire, release
 from update_task_registry import load_registry, now_iso, upsert_task, write_registry
 
 
@@ -148,6 +149,7 @@ def main() -> int:
     parser.add_argument("--opportunity-id", required=True)
     parser.add_argument("--status", choices=sorted(ALLOWED_STATUS))
     parser.add_argument("--card-dir", default="data/research/opportunity-cards")
+    parser.add_argument("--lock", default="data/research/_state/research.lock")
     parser.add_argument("--create-task", action="store_true")
     parser.add_argument("--task-registry-path", default="tasks/registry.json")
     parser.add_argument("--task-id")
@@ -161,51 +163,59 @@ def main() -> int:
     args = parser.parse_args()
 
     opportunities_path = Path(args.path).expanduser()
-    payload = load_payload(opportunities_path)
-    opportunities = payload["opportunities"]
+    lock_path = Path(args.lock).expanduser()
+    lock_result = acquire(lock_path, timeout=120, stale_seconds=7200)
+    if not lock_result.get("ok"):
+        raise SystemExit(f"failed to acquire research lock: {lock_path}")
 
-    target = None
-    for opportunity in opportunities:
-        if isinstance(opportunity, dict) and opportunity.get("opportunity_id") == args.opportunity_id:
-            target = opportunity
-            break
-    if target is None:
-        raise SystemExit(f"opportunity not found: {args.opportunity_id}")
+    try:
+        payload = load_payload(opportunities_path)
+        opportunities = payload["opportunities"]
 
-    card_dir = Path(args.card_dir).expanduser()
-    card_dir.mkdir(parents=True, exist_ok=True)
-    generated_at = args.updated_at or now_iso()
-    card_path = card_dir / f"{args.opportunity_id}.md"
-    card_path.write_text(build_card(target, generated_at), encoding="utf-8")
+        target = None
+        for opportunity in opportunities:
+            if isinstance(opportunity, dict) and opportunity.get("opportunity_id") == args.opportunity_id:
+                target = opportunity
+                break
+        if target is None:
+            raise SystemExit(f"opportunity not found: {args.opportunity_id}")
 
-    target["card_path"] = str(card_path)
-    if args.status is not None:
-        target["status"] = args.status
-    elif args.create_task:
-        target["status"] = "promoted"
-    target["updated_at"] = generated_at
+        card_dir = Path(args.card_dir).expanduser()
+        card_dir.mkdir(parents=True, exist_ok=True)
+        generated_at = args.updated_at or now_iso()
+        card_path = card_dir / f"{args.opportunity_id}.md"
+        card_path.write_text(build_card(target, generated_at), encoding="utf-8")
 
-    existing_notes = target.get("notes")
-    if not isinstance(existing_notes, list):
-        existing_notes = []
-    if args.note:
-        existing_notes.extend(args.note)
-    target["notes"] = existing_notes
+        target["card_path"] = str(card_path)
+        if args.status is not None:
+            target["status"] = args.status
+        elif args.create_task:
+            target["status"] = "promoted"
+        target["updated_at"] = generated_at
 
-    result: dict[str, Any] = {
-        "ok": True,
-        "opportunity_id": args.opportunity_id,
-        "card_path": str(card_path),
-        "status": target.get("status"),
-    }
+        existing_notes = target.get("notes")
+        if not isinstance(existing_notes, list):
+            existing_notes = []
+        if args.note:
+            existing_notes.extend(args.note)
+        target["notes"] = existing_notes
 
-    if args.create_task:
-        task_result = create_task(Path(args.task_registry_path).expanduser(), target, card_path, args)
-        target["task_id"] = task_result["task"]["task_id"]
-        result["task_sync"] = task_result
+        result: dict[str, Any] = {
+            "ok": True,
+            "opportunity_id": args.opportunity_id,
+            "card_path": str(card_path),
+            "status": target.get("status"),
+        }
 
-    payload["updatedAt"] = generated_at
-    opportunities_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if args.create_task:
+            task_result = create_task(Path(args.task_registry_path).expanduser(), target, card_path, args)
+            target["task_id"] = task_result["task"]["task_id"]
+            result["task_sync"] = task_result
+
+        payload["updatedAt"] = generated_at
+        opportunities_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    finally:
+        release(lock_path)
 
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
