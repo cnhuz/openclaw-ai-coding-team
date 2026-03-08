@@ -4,3 +4,9 @@ __pycache__/
 *.pyd
 .DS_Store
 Thumbs.db
+
+# Local runtime artifacts
+/data/
+/handoffs/
+/memory/
+/tasks/
