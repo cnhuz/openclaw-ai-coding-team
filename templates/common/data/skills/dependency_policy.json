@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": null,
+  "settings": {
+    "enabled": true,
+    "toolchainRoot": "~/.openclaw/toolchains",
+    "cacheDir": "~/.openclaw/toolchains/cache",
+    "goBinaryRoot": "~/.local/bin",
+    "go": {
+      "enabled": true,
+      "version": "latest",
+      "indexUrl": "https://go.dev/dl/?mode=json",
+      "baseUrl": "https://go.dev/dl"
+    }
+  }
+}

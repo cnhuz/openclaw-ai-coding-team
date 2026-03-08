@@ -12,7 +12,7 @@
 
 1. 先读取今天与昨天的 `memory/YYYY-MM-DD.md`
 2. 先运行 `python3 scripts/validate_task_registry.py --path tasks/registry.json`
-3. 再运行 `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --sessions-root ~/.openclaw/agents --output data/dashboard.md`
+3. 再运行 `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --sessions-root ~/.openclaw/agents --research-root ~/.openclaw/workspace-aic-researcher/data/research --skills-root ~/.openclaw/workspace-aic-researcher/data/skills --output data/dashboard.md`
 4. 检查 `MEMORY.md` 是否有过时条目，以及任务真相源与记忆是否明显漂移
 5. 检查是否存在卡住的活跃任务、待同步记忆、待升级事实、待处理 blocker
 6. 若当前角色是 `aic-captain`，且入口会话已存在但任务盘为空，优先立一个 `Intake` 任务并交给 `aic-planner`

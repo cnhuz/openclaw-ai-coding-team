@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": null,
+  "settings": {
+    "enabled": true,
+    "autoInstallTrustedLowRisk": true,
+    "managedSkillsWorkdir": "~/.openclaw",
+    "managedSkillsDir": "skills",
+    "trustedSources": [
+      "clawhub",
+      "openclaw-bundled"
+    ],
+    "trustedRegistries": [
+      "https://clawhub.com"
+    ],
+    "allowedInstallMethods": [
+      "npx-clawhub",
+      "bundled-auto"
+    ],
+    "maxAutoInstallRisk": "low"
+  }
+}

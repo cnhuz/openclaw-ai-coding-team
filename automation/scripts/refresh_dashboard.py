@@ -378,9 +378,14 @@ def load_json_file(path: Path, default: dict[str, Any]) -> dict[str, Any]:
 def load_research_summary(research_root: Path) -> dict[str, Any]:
     summary: dict[str, Any] = {
         "sources_enabled": 0,
+        "sites_known": 0,
+        "sites_with_hot_pages": 0,
+        "sites_with_feeds": 0,
         "active_topics": 0,
         "signals_last_24h": 0,
         "signal_sources_last_24h": 0,
+        "tool_attempts_last_24h": 0,
+        "tool_failures_last_24h": 0,
         "latest_signal_at": None,
         "status_counts": {
             "watchlist": 0,
@@ -395,6 +400,7 @@ def load_research_summary(research_root: Path) -> dict[str, Any]:
         return summary
 
     sources_payload = load_json_file(research_root / "sources.json", {"sources": []})
+    site_profiles_payload = load_json_file(research_root / "site_profiles.json", {"sites": []})
     topics_payload = load_json_file(research_root / "topic_profiles.json", {"profiles": []})
     opportunities_payload = load_json_file(research_root / "opportunities.json", {"opportunities": []})
 
@@ -402,6 +408,26 @@ def load_research_summary(research_root: Path) -> dict[str, Any]:
     if isinstance(sources, list):
         summary["sources_enabled"] = sum(
             1 for item in sources if isinstance(item, dict) and item.get("enabled", False)
+        )
+
+    sites = site_profiles_payload.get("sites")
+    if isinstance(sites, list):
+        summary["sites_known"] = sum(1 for item in sites if isinstance(item, dict) and item.get("status", "active") != "inactive")
+        summary["sites_with_hot_pages"] = sum(
+            1
+            for item in sites
+            if isinstance(item, dict)
+            and item.get("status", "active") != "inactive"
+            and isinstance(item.get("hot_pages"), list)
+            and any(isinstance(value, str) and value.strip() for value in item.get("hot_pages"))
+        )
+        summary["sites_with_feeds"] = sum(
+            1
+            for item in sites
+            if isinstance(item, dict)
+            and item.get("status", "active") != "inactive"
+            and isinstance(item.get("feed_urls"), list)
+            and any(isinstance(value, str) and value.strip() for value in item.get("feed_urls"))
         )
 
     profiles = topics_payload.get("profiles")
@@ -443,6 +469,25 @@ def load_research_summary(research_root: Path) -> dict[str, Any]:
             datetime.fromtimestamp(latest_signal_ts).astimezone().replace(microsecond=0).isoformat()
         )
 
+    attempts_root = research_root / "tool_attempts"
+    if attempts_root.exists():
+        for path in sorted(attempts_root.glob("*.jsonl")):
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    attempt = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(attempt, dict):
+                    continue
+                attempted_ts = parse_timestamp(attempt.get("attempted_at"))
+                if attempted_ts == float("-inf") or now_ts - attempted_ts > 24 * 3600:
+                    continue
+                summary["tool_attempts_last_24h"] += 1
+                if attempt.get("outcome") == "failure":
+                    summary["tool_failures_last_24h"] += 1
+
     opportunities = opportunities_payload.get("opportunities")
     if isinstance(opportunities, list):
         rows = [item for item in opportunities if isinstance(item, dict)]
@@ -459,6 +504,41 @@ def load_research_summary(research_root: Path) -> dict[str, Any]:
             )
         )
         summary["top_opportunities"] = rows[:5]
+
+    return summary
+
+
+def load_skill_summary(skills_root: Path) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "candidates": 0,
+        "approved": 0,
+        "installed": 0,
+        "eligible_skills": 0,
+        "missing_skills": 0,
+        "managed_skills_dir": None,
+    }
+    if not skills_root.exists():
+        return summary
+
+    catalog_payload = load_json_file(skills_root / "catalog.json", {"candidates": []})
+    inventory_payload = load_json_file(skills_root / "inventory.json", {})
+
+    candidates = catalog_payload.get("candidates")
+    if isinstance(candidates, list):
+        rows = [item for item in candidates if isinstance(item, dict)]
+        summary["candidates"] = len(rows)
+        summary["approved"] = sum(1 for item in rows if item.get("status") == "approved")
+        summary["installed"] = sum(1 for item in rows if item.get("status") == "installed")
+
+    eligible = inventory_payload.get("eligible_skills")
+    if isinstance(eligible, list):
+        summary["eligible_skills"] = sum(1 for item in eligible if isinstance(item, str) and item)
+    missing = inventory_payload.get("missing_skills")
+    if isinstance(missing, list):
+        summary["missing_skills"] = sum(1 for item in missing if isinstance(item, str) and item)
+    managed_skills_dir = inventory_payload.get("managedSkillsDir")
+    if isinstance(managed_skills_dir, str) and managed_skills_dir:
+        summary["managed_skills_dir"] = managed_skills_dir
 
     return summary
 
@@ -672,6 +752,7 @@ def render_dashboard(
     sessions_summary: dict[str, dict[str, Any]],
     backup_health: dict[str, str],
     research_summary: dict[str, Any],
+    skill_summary: dict[str, Any],
     output_path: Path,
 ) -> str:
     state_counter = Counter(task.get("state", "Unknown") for task in tasks)
@@ -710,6 +791,8 @@ def render_dashboard(
         anomalies.append("git push check failed in latest backup run")
     if research_summary["sources_enabled"] == 0:
         anomalies.append("research discovery sources are not configured")
+    if research_summary["sites_known"] == 0:
+        anomalies.append("research site profiles are not configured")
     if research_summary["active_topics"] == 0:
         anomalies.append("research topic profiles are inactive")
 
@@ -751,15 +834,29 @@ def render_dashboard(
         "## Exploration Summary",
         "",
         f"- sources_enabled: {research_summary['sources_enabled']}",
+        f"- sites_known: {research_summary['sites_known']}",
+        f"- sites_with_hot_pages: {research_summary['sites_with_hot_pages']}",
+        f"- sites_with_feeds: {research_summary['sites_with_feeds']}",
         f"- active_topics: {research_summary['active_topics']}",
         f"- signals_last_24h: {research_summary['signals_last_24h']}",
         f"- signal_sources_last_24h: {research_summary['signal_sources_last_24h']}",
+        f"- tool_attempts_last_24h: {research_summary['tool_attempts_last_24h']}",
+        f"- tool_failures_last_24h: {research_summary['tool_failures_last_24h']}",
         f"- latest_signal_at: {research_summary['latest_signal_at'] or 'none'}",
         f"- opportunities_watchlist: {research_summary['status_counts']['watchlist']}",
         f"- opportunities_candidate: {research_summary['status_counts']['candidate']}",
         f"- opportunities_ready_review: {research_summary['status_counts']['ready_review']}",
         f"- opportunities_promoted: {research_summary['status_counts']['promoted']}",
         f"- top_opportunity: {research_summary['top_opportunities'][0]['opportunity_id'] if research_summary['top_opportunities'] else 'none'}",
+        "",
+        "## Skills Summary",
+        "",
+        f"- candidates: {skill_summary['candidates']}",
+        f"- approved: {skill_summary['approved']}",
+        f"- installed: {skill_summary['installed']}",
+        f"- eligible_skills: {skill_summary['eligible_skills']}",
+        f"- missing_skills: {skill_summary['missing_skills']}",
+        f"- managed_skills_dir: {skill_summary['managed_skills_dir'] or 'none'}",
         "",
         "## Capability Loop",
         "",
@@ -903,6 +1000,7 @@ def main() -> int:
     parser.add_argument("--exec-logs-dir", default="data/exec-logs")
     parser.add_argument("--sessions-root", default="~/.openclaw/agents")
     parser.add_argument("--research-root", default="data/research")
+    parser.add_argument("--skills-root", default="data/skills")
     parser.add_argument("--output", default="data/dashboard.md")
     parser.add_argument("--handoff-limit", type=int, default=8)
     args = parser.parse_args()
@@ -912,6 +1010,7 @@ def main() -> int:
     exec_logs_dir = Path(args.exec_logs_dir).expanduser()
     sessions_root = Path(args.sessions_root).expanduser()
     research_root = Path(args.research_root).expanduser()
+    skills_root = Path(args.skills_root).expanduser()
     output_path = Path(args.output).expanduser()
     workspace_root = registry_path.parent.parent
     openclaw_home = sessions_root.parent if sessions_root.name == "agents" else None
@@ -922,6 +1021,7 @@ def main() -> int:
     sessions_summary = load_sessions_summary(sessions_root)
     backup_health = load_backup_health(workspace_root, exec_jobs)
     research_summary = load_research_summary(research_root)
+    skill_summary = load_skill_summary(skills_root)
 
     dashboard = render_dashboard(
         registry_path=registry_path,
@@ -934,6 +1034,7 @@ def main() -> int:
         sessions_summary=sessions_summary,
         backup_health=backup_health,
         research_summary=research_summary,
+        skill_summary=skill_summary,
         output_path=output_path,
     )
 
@@ -952,6 +1053,7 @@ def main() -> int:
                 "missing_optional_jobs": missing_optional_jobs,
                 "backup_health": backup_health,
                 "research_summary": research_summary,
+                "skill_summary": skill_summary,
                 "sessions_root": str(sessions_root),
             },
             ensure_ascii=False,

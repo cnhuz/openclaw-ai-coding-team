@@ -70,6 +70,26 @@
       "notes": "适合收集用户吐槽、替代方案、使用反馈和新机会线索。"
     },
     {
+      "source_id": "x-public",
+      "label": "X Public",
+      "channel": "social-network",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://x.com/explore",
+      "search_templates": [
+        "site:x.com {query}",
+        "site:twitter.com {query}",
+        "site:x.com {topic_keywords}"
+      ],
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers",
+        "competitor-moves"
+      ],
+      "notes": "适合追踪最新热点和原始发布，但通常应配合 browser 或 API 型 skill。"
+    },
+    {
       "source_id": "product-hunt",
       "label": "Product Hunt",
       "channel": "startup-community",
@@ -86,6 +106,24 @@
         "community-trends"
       ],
       "notes": "适合发现新产品、定位包装方式与市场关注点。"
+    },
+    {
+      "source_id": "lobsters",
+      "label": "Lobsters",
+      "channel": "developer-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://lobste.rs/",
+      "search_templates": [
+        "site:lobste.rs {query}",
+        "site:lobste.rs {topic_keywords}"
+      ],
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers"
+      ],
+      "notes": "适合发现工程化、架构与工具细分机会。"
     },
     {
       "source_id": "v2ex",
@@ -124,6 +162,25 @@
       "notes": "适合中文技术社区趋势扫描与方案空间观察。"
     },
     {
+      "source_id": "medium-devto",
+      "label": "Medium / DEV",
+      "channel": "content-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://medium.com/",
+      "search_templates": [
+        "site:medium.com OR site:dev.to {query}",
+        "site:medium.com OR site:dev.to {topic_keywords}"
+      ],
+      "topic_tags": [
+        "technical-enablers",
+        "community-trends",
+        "competitor-moves"
+      ],
+      "notes": "适合长文、复盘、趋势综述与方案分析。"
+    },
+    {
       "source_id": "news-and-analysis",
       "label": "News / Analysis Sites",
       "channel": "industry-media",
@@ -160,6 +217,28 @@
         "technical-enablers"
       ],
       "notes": "适合验证产品更新、官方发布与版本变更。"
+    },
+    {
+      "source_id": "emergent-public-web",
+      "label": "Emergent Public Web",
+      "channel": "public-web",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P3",
+      "base_url": "",
+      "search_templates": [
+        "\"best {topic_keywords} discussion\"",
+        "\"top {topic_keywords} blog\"",
+        "\"{topic_keywords}\" \"community\"",
+        "\"{topic_keywords}\" \"forum\""
+      ],
+      "topic_tags": [
+        "user-pain-demand",
+        "competitor-moves",
+        "community-trends",
+        "technical-enablers"
+      ],
+      "notes": "用于发现未预置的新站点、新社区和新内容源；发现后应同步写入 `site_profiles.json`。"
     }
   ]
 }

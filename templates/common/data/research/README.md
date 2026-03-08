@@ -11,10 +11,13 @@
 ## 目录结构
 
 - `sources.json`：信号源目录与搜索模板
+- `site_profiles.json`：站点画像、热门入口、Feed、质量信号、工具偏好
+- `tool_profiles.json`：探索工具画像与默认回退链
 - `topic_profiles.json`：当前探索主题、关键词、排除词、学习统计
 - `source_scores.json`：来源质量评分与历史命中率
 - `opportunities.json`：聚合后的机会池
 - `signals/`：原始信号 JSONL
+- `tool_attempts/`：站点-工具-结果 尝试日志
 - `opportunity-cards/`：已固化的 Opportunity Card
 
 ## 设计边界
@@ -38,4 +41,13 @@
 - 被晋升、被否决、持续观察的机会都会回写到 `topic_profiles.json` 学习统计
 - `exploration-learning` 还会反向生成 `query_expansions` 与 `blocked_terms`
 - `exploration-learning` 还会学习每个 topic 的 `high_yield_sources`、`low_yield_sources` 与 `source_bias`
+- `tool_route_learning` 会学习每个站点的 `learned_preferred_tools`、`learned_avoid_tools`、`preferred_frontier_kinds`
+- `tool_route_learning` 也会回写 `failure_by_kind`，并在明显需要时把站点标成 `login-required` / `js_heavy`
 - 第一版先学习“来源权重”和“主题热度”，后续再逐步学习查询模板与细分渠道
+
+## 站点与工具自治
+
+- 探索目标不局限于 `sources.json` 里的预置站点
+- 若发现新的高质量站点，应追加到 `site_profiles.json`
+- 工具失败后应记录到 `tool_attempts/`，并在后续学习中调整回退链
+- `prepare_site_frontier.py` 会优先产出热门页、Feed 和高价值搜索入口，避免每轮都从宽泛 query 开始

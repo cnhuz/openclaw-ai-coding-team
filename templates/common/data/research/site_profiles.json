@@ -1,0 +1,453 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": null,
+  "settings": {
+    "allowAutoDiscovery": true,
+    "preferredFrontierKinds": [
+      "hot_page",
+      "feed",
+      "query"
+    ],
+    "defaultPublicRoute": [
+      "web.search",
+      "web.fetch",
+      "browser"
+    ],
+    "defaultInteractiveRoute": [
+      "browser",
+      "web.search",
+      "web.fetch"
+    ],
+    "defaultLoginRoute": [
+      "browser",
+      "web.search"
+    ]
+  },
+  "sites": [
+    {
+      "site_id": "generic-public-web",
+      "label": "Generic Public Web",
+      "domains": [],
+      "channel": "public-web",
+      "access": "public",
+      "js_heavy": false,
+      "topic_tags": [
+        "user-pain-demand",
+        "competitor-moves",
+        "community-trends",
+        "technical-enablers"
+      ],
+      "preferred_tools": [
+        "web.search",
+        "web.fetch",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [],
+      "feed_urls": [],
+      "quality_signals": [
+        "标题与主题高度相关",
+        "正文可抓取且非单纯搬运",
+        "有评论、评分或引用证据"
+      ],
+      "discovery_queries": [
+        "best {topic_keywords} discussion",
+        "top {topic_keywords} post",
+        "{topic_keywords} changelog review analysis"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "reddit",
+      "label": "Reddit",
+      "domains": [
+        "reddit.com",
+        "www.reddit.com",
+        "old.reddit.com"
+      ],
+      "channel": "community-forum",
+      "access": "partial",
+      "js_heavy": true,
+      "topic_tags": [
+        "user-pain-demand",
+        "community-trends",
+        "competitor-moves"
+      ],
+      "preferred_tools": [
+        "web.search",
+        "web.fetch",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [
+        "https://www.reddit.com/r/programming/hot/",
+        "https://www.reddit.com/r/MachineLearning/hot/",
+        "https://www.reddit.com/r/artificial/hot/"
+      ],
+      "feed_urls": [
+        "https://www.reddit.com/r/programming/.rss",
+        "https://www.reddit.com/r/MachineLearning/.rss"
+      ],
+      "quality_signals": [
+        "高赞主贴或高赞评论",
+        "同一痛点在多个子版块重复出现",
+        "用户描述清晰包含替代方案或失败体验"
+      ],
+      "discovery_queries": [
+        "site:reddit.com {query}",
+        "site:reddit.com {topic_keywords} pain",
+        "site:reddit.com {topic_keywords} alternatives"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "x",
+      "label": "X / Twitter",
+      "domains": [
+        "x.com",
+        "www.x.com",
+        "twitter.com",
+        "www.twitter.com"
+      ],
+      "channel": "social-network",
+      "access": "login-required",
+      "js_heavy": true,
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers",
+        "competitor-moves"
+      ],
+      "preferred_tools": [
+        "browser",
+        "web.search",
+        "web.fetch",
+        "skill:xurl"
+      ],
+      "fallback_tools": [
+        "web.search"
+      ],
+      "hot_pages": [
+        "https://x.com/explore/tabs/for-you",
+        "https://x.com/explore"
+      ],
+      "quality_signals": [
+        "被高质量从业者反复转发或引用",
+        "同主题多账号独立提及",
+        "可追溯到原始发布、发布者和上下文"
+      ],
+      "discovery_queries": [
+        "site:x.com {query}",
+        "site:twitter.com {topic_keywords}",
+        "{topic_keywords} x.com launch review"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "hacker-news",
+      "label": "Hacker News",
+      "domains": [
+        "news.ycombinator.com"
+      ],
+      "channel": "developer-community",
+      "access": "public",
+      "js_heavy": false,
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers",
+        "user-pain-demand"
+      ],
+      "preferred_tools": [
+        "web.fetch",
+        "web.search",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [
+        "https://news.ycombinator.com/news",
+        "https://news.ycombinator.com/best",
+        "https://news.ycombinator.com/ask"
+      ],
+      "feed_urls": [
+        "https://hnrss.org/frontpage",
+        "https://hnrss.org/best"
+      ],
+      "quality_signals": [
+        "原文链接可访问",
+        "评论区能看到真实经验或反驳",
+        "同类主题连续进入首页或 best"
+      ],
+      "discovery_queries": [
+        "site:news.ycombinator.com {query}",
+        "site:news.ycombinator.com {topic_keywords}"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "lobsters",
+      "label": "Lobsters",
+      "domains": [
+        "lobste.rs"
+      ],
+      "channel": "developer-community",
+      "access": "public",
+      "js_heavy": false,
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers"
+      ],
+      "preferred_tools": [
+        "web.fetch",
+        "web.search",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [
+        "https://lobste.rs/",
+        "https://lobste.rs/newest"
+      ],
+      "feed_urls": [
+        "https://lobste.rs/rss"
+      ],
+      "quality_signals": [
+        "讨论更聚焦工程与架构",
+        "评论包含可执行经验或复盘",
+        "高分帖常能发现细分工具机会"
+      ],
+      "discovery_queries": [
+        "site:lobste.rs {query}",
+        "site:lobste.rs {topic_keywords}"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "product-hunt",
+      "label": "Product Hunt",
+      "domains": [
+        "producthunt.com",
+        "www.producthunt.com"
+      ],
+      "channel": "startup-community",
+      "access": "partial",
+      "js_heavy": true,
+      "topic_tags": [
+        "competitor-moves",
+        "community-trends"
+      ],
+      "preferred_tools": [
+        "web.search",
+        "web.fetch",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [
+        "https://www.producthunt.com/"
+      ],
+      "quality_signals": [
+        "榜单位置与讨论热度同时较高",
+        "评论区出现真实用户反馈",
+        "定位与功能差异清晰"
+      ],
+      "discovery_queries": [
+        "site:producthunt.com {query}",
+        "site:producthunt.com {topic_keywords}"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "v2ex",
+      "label": "V2EX",
+      "domains": [
+        "v2ex.com",
+        "www.v2ex.com"
+      ],
+      "channel": "community-forum",
+      "access": "public",
+      "js_heavy": false,
+      "topic_tags": [
+        "user-pain-demand",
+        "community-trends"
+      ],
+      "preferred_tools": [
+        "web.fetch",
+        "web.search",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [
+        "https://www.v2ex.com/?tab=hot",
+        "https://www.v2ex.com/?tab=all"
+      ],
+      "feed_urls": [],
+      "quality_signals": [
+        "真实工作流吐槽",
+        "产品替代方案和价格敏感信号",
+        "中文社区对趋势的本地化反馈"
+      ],
+      "discovery_queries": [
+        "site:v2ex.com {query}",
+        "site:v2ex.com {topic_keywords}"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "juejin",
+      "label": "掘金",
+      "domains": [
+        "juejin.cn"
+      ],
+      "channel": "content-community",
+      "access": "public",
+      "js_heavy": true,
+      "topic_tags": [
+        "technical-enablers",
+        "community-trends"
+      ],
+      "preferred_tools": [
+        "web.search",
+        "web.fetch",
+        "browser"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [
+        "https://juejin.cn/"
+      ],
+      "feed_urls": [],
+      "quality_signals": [
+        "技术方案成体系",
+        "与具体工具发布、生态变化相关",
+        "可跟到作者、仓库或原始链接"
+      ],
+      "discovery_queries": [
+        "site:juejin.cn {query}",
+        "site:juejin.cn {topic_keywords}"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    },
+    {
+      "site_id": "medium-devto",
+      "label": "Medium / DEV",
+      "domains": [
+        "medium.com",
+        "dev.to"
+      ],
+      "channel": "content-community",
+      "access": "partial",
+      "js_heavy": true,
+      "topic_tags": [
+        "technical-enablers",
+        "community-trends",
+        "competitor-moves"
+      ],
+      "preferred_tools": [
+        "web.search",
+        "web.fetch",
+        "browser",
+        "skill:blogwatcher"
+      ],
+      "fallback_tools": [
+        "browser"
+      ],
+      "hot_pages": [],
+      "feed_urls": [
+        "https://dev.to/feed",
+        "https://medium.com/feed/tag/ai"
+      ],
+      "quality_signals": [
+        "文章作者有实际项目或产品背景",
+        "文中出现可验证链接、仓库、截图或指标",
+        "与发布、复盘、长文分析相关"
+      ],
+      "discovery_queries": [
+        "site:medium.com OR site:dev.to {query}",
+        "site:medium.com OR site:dev.to {topic_keywords}"
+      ],
+      "learning": {
+        "success_by_tool": {},
+        "failure_by_tool": {},
+        "learned_preferred_tools": [],
+        "learned_avoid_tools": [],
+        "last_successful_tool": null,
+        "last_failure_kind": null,
+        "last_seen_at": null
+      }
+    }
+  ]
+}

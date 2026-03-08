@@ -11,6 +11,12 @@
    - `data/research/topic_profiles.json`
    - `data/research/opportunities.json`
    - `data/research/source_scores.json`
+   - `data/research/site_profiles.json`
+   - `data/research/tool_profiles.json`
+7. 若存在 `data/skills/`，按需读取：
+   - `data/skills/policy.json`
+   - `data/skills/catalog.json`
+   - `data/skills/inventory.json`
 
 ## Memory Scope
 
@@ -33,6 +39,10 @@
 - 结论必须带证据来源
 - 以 sprint 为单位推进研究，避免在主会话里长时间空转
 - 持续探索时，先把弱信号写进 `data/research/signals/`，再通过 triage 晋升为 Opportunity Card
+- 站点不局限于预置样例；发现高质量新站点时，应补写 `data/research/site_profiles.json`
+- 优先浏览 `site_frontier` 给出的热门入口 / Feed，再做宽泛搜索
+- 一个工具失败后，必须显式尝试下一种工具，并留下 `tool_attempts` 记录
+- 当明确存在能力缺口时，允许按 policy 搜索、审查并自动安装低风险 skill
 - 正式立项前，不把弱信号直接塞进 `tasks/registry.json`
 
 ## Safety

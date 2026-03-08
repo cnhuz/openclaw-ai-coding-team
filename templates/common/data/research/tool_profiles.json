@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": null,
+  "settings": {
+    "defaultPublicRoute": [
+      "web.search",
+      "web.fetch",
+      "browser"
+    ],
+    "defaultInteractiveRoute": [
+      "browser",
+      "web.search",
+      "web.fetch"
+    ],
+    "defaultLoginRoute": [
+      "browser",
+      "web.search"
+    ]
+  },
+  "tools": [
+    {
+      "tool_id": "web.search",
+      "kind": "builtin",
+      "label": "OpenClaw Web Search",
+      "available": true,
+      "good_for": [
+        "发现公开网页",
+        "定位热门帖子和文章",
+        "发现未知新站点"
+      ],
+      "weak_for": [
+        "登录态内容",
+        "页面正文抽取",
+        "深层交互"
+      ]
+    },
+    {
+      "tool_id": "web.fetch",
+      "kind": "builtin",
+      "label": "OpenClaw Web Fetch",
+      "available": true,
+      "good_for": [
+        "静态或半静态公开网页正文",
+        "官方博客、文档、changelog",
+        "直接证据补充"
+      ],
+      "weak_for": [
+        "强 JS 渲染页面",
+        "登录态页面",
+        "复杂列表翻页和热门流"
+      ]
+    },
+    {
+      "tool_id": "browser",
+      "kind": "builtin",
+      "label": "OpenClaw Browser",
+      "available": true,
+      "good_for": [
+        "登录态平台",
+        "热门页、时间线、评论区",
+        "JS-heavy 页面"
+      ],
+      "weak_for": [
+        "简单全文检索",
+        "大规模批量抓取"
+      ]
+    },
+    {
+      "tool_id": "skill:blogwatcher",
+      "kind": "skill",
+      "label": "blogwatcher",
+      "skill_name": "blogwatcher",
+      "available": false,
+      "good_for": [
+        "博客和 RSS 持续追踪",
+        "更新检测"
+      ],
+      "weak_for": [
+        "论坛帖子和评论区",
+        "登录态社交平台"
+      ]
+    },
+    {
+      "tool_id": "skill:xurl",
+      "kind": "skill",
+      "label": "xurl",
+      "skill_name": "xurl",
+      "available": false,
+      "good_for": [
+        "X API 访问",
+        "认证后的搜索与帖子读取"
+      ],
+      "weak_for": [
+        "无认证环境",
+        "网页级热门流浏览"
+      ]
+    }
+  ]
+}

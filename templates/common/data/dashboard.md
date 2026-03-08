@@ -1,7 +1,7 @@
 # Automation Dashboard
 
 > Auto-updated
-> Recommended generator: `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --output data/dashboard.md`
+> Recommended generator: `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --research-root data/research --skills-root data/skills --output data/dashboard.md`
 
 ## Summary
 
