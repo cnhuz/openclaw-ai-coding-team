@@ -34,6 +34,7 @@
   - 任务详情页内联查看 handoff / exec log / evidence 演进
   - 运行告警面板
   - 全局事件流页面
+  - 团队拓扑、中文角色卡与主线路径
 
 ## 启动
 
@@ -52,7 +53,7 @@ http://127.0.0.1:8765
 - `/`：总览
 - `/tasks`：正式任务控制面
 - `/opportunities`：机会池
-- `/agents`：agent 活动
+- `/agents`：团队拓扑与角色状态
 - `/cron`：cron 管理
 - `/logs`：最近执行日志
 - `/handoffs`：最近交接

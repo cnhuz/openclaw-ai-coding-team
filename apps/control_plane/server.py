@@ -53,6 +53,47 @@ OWNER_OPTIONS = [
     "aic-curator",
 ]
 
+AGENT_META = {
+    "aic-captain": {"name": "船长", "title": "总指挥", "lane": "指挥层"},
+    "aic-planner": {"name": "规划官", "title": "需求收敛与任务拆解", "lane": "规划层"},
+    "aic-reviewer": {"name": "审议官", "title": "边界与质量把关", "lane": "规划层"},
+    "aic-dispatcher": {"name": "调度官", "title": "派发与推进闭环", "lane": "调度层"},
+    "aic-researcher": {"name": "研究官", "title": "需求与机会研究", "lane": "研究执行层"},
+    "aic-builder": {"name": "实现编排官", "title": "实现与编码引擎编排", "lane": "研究执行层"},
+    "aic-tester": {"name": "验证官", "title": "测试、回归与验收", "lane": "研究执行层"},
+    "aic-releaser": {"name": "发布官", "title": "上线、回滚与观察", "lane": "研究执行层"},
+    "aic-reflector": {"name": "反思官", "title": "复盘与流程修正", "lane": "复盘层"},
+    "aic-curator": {"name": "典藏官", "title": "知识沉淀与归档", "lane": "复盘层"},
+}
+
+AGENT_LAYERS = [
+    ["aic-captain"],
+    ["aic-planner", "aic-dispatcher", "aic-reflector"],
+    ["aic-researcher", "aic-reviewer", "aic-builder", "aic-tester", "aic-releaser", "aic-curator"],
+]
+
+CALL_GRAPH = [
+    ("aic-captain", ["aic-planner", "aic-dispatcher", "aic-reflector"]),
+    ("aic-planner", ["aic-researcher", "aic-reviewer"]),
+    ("aic-dispatcher", ["aic-researcher", "aic-builder", "aic-tester", "aic-releaser", "aic-curator"]),
+    ("aic-reflector", ["aic-curator"]),
+]
+
+EXPECTED_NEXT_OWNER = {
+    "Intake": "aic-planner",
+    "Researching": "aic-planner",
+    "Scoped": "aic-reviewer",
+    "Planned": "aic-reviewer",
+    "Approved": "aic-dispatcher",
+    "Building": "aic-tester",
+    "Verifying": "aic-releaser",
+    "Staging": "aic-releaser",
+    "Released": "aic-reflector",
+    "Observing": "aic-curator",
+    "Replan": "aic-planner",
+    "Rework": "aic-builder",
+}
+
 CORE_JOB_NAMES = {
     "dashboard-refresh",
     "planner-intake",
@@ -200,6 +241,18 @@ def format_age(value: datetime | None) -> str:
 
 def escape(value: object) -> str:
     return html.escape(str(value))
+
+
+def agent_meta(agent_id: str) -> dict[str, str]:
+    return AGENT_META.get(agent_id, {"name": agent_id, "title": "-", "lane": "未分类"})
+
+
+def agent_name(agent_id: str) -> str:
+    return agent_meta(agent_id)["name"]
+
+
+def agent_title(agent_id: str) -> str:
+    return agent_meta(agent_id)["title"]
 
 
 def link(label: str, href: str) -> str:
@@ -418,6 +471,7 @@ def load_recent_handoffs(config: AppConfig, limit: int = 8) -> list[dict]:
         sender = "-"
         task_id = "-"
         current_stage = "-"
+        recipient = "-"
         for line in lines:
             if line.startswith("发送方: "):
                 sender = line.split(": ", 1)[1]
@@ -425,11 +479,14 @@ def load_recent_handoffs(config: AppConfig, limit: int = 8) -> list[dict]:
                 task_id = line.split(": ", 1)[1]
             elif line.startswith("当前阶段: "):
                 current_stage = line.split(": ", 1)[1]
+        if "-to-" in path.stem:
+            recipient = path.stem.rsplit("-to-", 1)[1]
         rows.append(
             {
                 "path": path,
                 "task_id": task_id,
                 "sender": sender,
+                "recipient": recipient,
                 "current_stage": current_stage,
                 "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
                 "summary": lines[5] if len(lines) > 5 else "",
@@ -469,6 +526,7 @@ def load_task_handoffs(config: AppConfig, task_id: str) -> list[dict]:
         sender = "-"
         current_task_id = "-"
         current_stage = "-"
+        recipient = "-"
         for line in lines:
             if line.startswith("发送方: "):
                 sender = line.split(": ", 1)[1]
@@ -478,11 +536,14 @@ def load_task_handoffs(config: AppConfig, task_id: str) -> list[dict]:
                 current_stage = line.split(": ", 1)[1]
         if current_task_id != task_id:
             continue
+        if "-to-" in path.stem:
+            recipient = path.stem.rsplit("-to-", 1)[1]
         rows.append(
             {
                 "path": path,
                 "task_id": current_task_id,
                 "sender": sender,
+                "recipient": recipient,
                 "current_stage": current_stage,
                 "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
             }
@@ -691,6 +752,88 @@ def build_alerts(state: dict) -> list[dict]:
     return alerts
 
 
+def build_agent_stats(state: dict) -> dict[str, dict]:
+    stats: dict[str, dict] = {}
+    for agent_id in AGENT_META:
+        stats[agent_id] = {
+            "agent_id": agent_id,
+            "name": agent_name(agent_id),
+            "title": agent_title(agent_id),
+            "lane": agent_meta(agent_id)["lane"],
+            "sessions": 0,
+            "last_activity": None,
+            "active_tasks": [],
+            "running_jobs": 0,
+            "failed_jobs": 0,
+            "handoff_out": 0,
+            "handoff_in": 0,
+        }
+
+    for item in state["agents"]:
+        agent_id = item["agent_id"]
+        if agent_id not in stats:
+            continue
+        stats[agent_id]["sessions"] = item["count"]
+        stats[agent_id]["last_activity"] = item["last_activity"]
+
+    for task in state["active_tasks"]:
+        owner = task.get("owner")
+        if owner in stats:
+            stats[owner]["active_tasks"].append(task)
+
+    for job in state["running_jobs"]:
+        agent_id = job["agent_id"]
+        if agent_id in stats:
+            stats[agent_id]["running_jobs"] += 1
+
+    for job in state["failed_jobs"]:
+        agent_id = job["agent_id"]
+        if agent_id in stats:
+            stats[agent_id]["failed_jobs"] += 1
+
+    for handoff in state["recent_handoffs"]:
+        sender = handoff.get("sender")
+        recipient = handoff.get("recipient")
+        if sender in stats:
+            stats[sender]["handoff_out"] += 1
+        if recipient in stats:
+            stats[recipient]["handoff_in"] += 1
+
+    return stats
+
+
+def agent_health(agent_stats: dict) -> tuple[str, str]:
+    if agent_stats["failed_jobs"] > 0:
+        return ("danger", "告警")
+    if len(agent_stats["active_tasks"]) > 0 or agent_stats["running_jobs"] > 0:
+        return ("ok", "推进中")
+    if agent_stats["sessions"] > 0:
+        return ("warn", "活跃")
+    return ("muted", "空闲")
+
+
+def build_mainline_paths(state: dict) -> list[dict]:
+    config: AppConfig = state["config"]
+    rows: list[dict] = []
+    for task in state["active_tasks"][:5]:
+        handoffs = load_task_handoffs(config, task["task_id"])
+        previous_owner = handoffs[0]["sender"] if handoffs else "-"
+        next_owner = EXPECTED_NEXT_OWNER.get(str(task.get("state", "")), "-")
+        rows.append(
+            {
+                "task_id": task["task_id"],
+                "title": task.get("title", ""),
+                "state": task.get("state", "-"),
+                "previous_owner": previous_owner,
+                "current_owner": task.get("owner", "-"),
+                "next_owner": next_owner,
+                "updated_at": parse_iso(task.get("updated_at")),
+                "next_step": task.get("next_step", ""),
+            }
+        )
+    return rows
+
+
 def build_state(config: AppConfig) -> dict:
     cache_key = str(config.openclaw_home.resolve())
     cached = STATE_CACHE.get(cache_key)
@@ -732,6 +875,8 @@ def build_state(config: AppConfig) -> dict:
     }
     state["alerts"] = build_alerts(state)
     state["events"] = build_global_events(state)
+    state["agent_stats"] = build_agent_stats(state)
+    state["mainline_paths"] = build_mainline_paths(state)
     STATE_CACHE[cache_key] = (now, state)
     return dict(state)
 
@@ -758,7 +903,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
         ("机会池", "/opportunities"),
         ("事件流", "/events"),
         ("Handoffs", "/handoffs"),
-        ("Agents", "/agents"),
+        ("团队", "/agents"),
         ("Cron", "/cron"),
         ("日志", "/logs"),
     ]
@@ -820,6 +965,22 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
     .actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
     .form-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }}
     .form-grid .full {{ grid-column: 1 / -1; }}
+    .topology-layer {{ display: grid; gap: 12px; margin-top: 14px; }}
+    .topology-row {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }}
+    .agent-card {{ background: #0f1832; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }}
+    .agent-card.ok {{ border-color: rgba(115,209,61,0.7); }}
+    .agent-card.warn {{ border-color: rgba(247,201,72,0.7); }}
+    .agent-card.danger {{ border-color: rgba(255,120,117,0.8); }}
+    .agent-card .agent-name {{ font-size: 18px; font-weight: 700; }}
+    .agent-card .agent-id {{ color: var(--muted); font-size: 12px; margin-top: 2px; }}
+    .agent-card .agent-role {{ color: var(--muted); font-size: 13px; margin-top: 4px; }}
+    .agent-stats {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }}
+    .agent-stat {{ background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px; }}
+    .agent-stat-label {{ color: var(--muted); font-size: 12px; }}
+    .agent-stat-value {{ font-size: 16px; font-weight: 700; margin-top: 2px; }}
+    .edge-strip {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }}
+    .edge-node {{ padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }}
+    .edge-node.hot {{ border-color: var(--accent); color: var(--text); }}
     @media (max-width: 980px) {{
       .two, .three {{ grid-template-columns: 1fr; }}
       .form-grid {{ grid-template-columns: 1fr; }}
@@ -1100,18 +1261,112 @@ def render_opportunities(state: dict, message: str) -> bytes:
 
 
 def render_agents(state: dict, message: str) -> bytes:
-    rows = []
-    for item in state["agents"]:
-        rows.append(
+    agent_stats = state["agent_stats"]
+    layer_sections: list[str] = []
+    for layer in AGENT_LAYERS:
+        cards = []
+        for agent_id in layer:
+            stats = agent_stats[agent_id]
+            health_class, health_label = agent_health(stats)
+            active_tasks = stats["active_tasks"]
+            active_task_links = "<br>".join(
+                link(task["task_id"], "/task?" + urlencode({"id": str(task["task_id"])}))
+                for task in active_tasks[:3]
+            ) if active_tasks else "<span class=\"muted\">暂无</span>"
+            cards.append(
+                f"""
+                <div class="agent-card {health_class}">
+                  <div class="agent-name">{escape(stats['name'])}</div>
+                  <div class="agent-id">{escape(agent_id)}</div>
+                  <div class="agent-role">{escape(stats['title'])}</div>
+                  <div style="margin-top:8px;"><span class="pill">{escape(health_label)}</span></div>
+                  <div class="agent-stats">
+                    <div class="agent-stat"><div class="agent-stat-label">Sessions</div><div class="agent-stat-value">{escape(stats['sessions'])}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">最近活动</div><div class="agent-stat-value">{escape(format_age(stats['last_activity']))}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">持有任务</div><div class="agent-stat-value">{escape(len(active_tasks))}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">失败 Jobs</div><div class="agent-stat-value">{escape(stats['failed_jobs'])}</div></div>
+                  </div>
+                  <div class="hint">当前任务</div>
+                  <div>{active_task_links}</div>
+                </div>
+                """
+            )
+        layer_sections.append(f"<div class=\"topology-row\">{''.join(cards)}</div>")
+
+    relation_rows = []
+    recent_edges = {(item.get("sender"), item.get("recipient")) for item in state["recent_handoffs"]}
+    for caller, callees in CALL_GRAPH:
+        callee_nodes = []
+        for callee in callees:
+            hot = " hot" if (caller, callee) in recent_edges else ""
+            callee_nodes.append(f"<span class=\"edge-node{hot}\">{escape(agent_name(callee))}</span>")
+        relation_rows.append(
+            f"""
+            <div class="panel">
+              <h3>{escape(agent_name(caller))} / {escape(agent_title(caller))}</h3>
+              <div class="edge-strip">
+                <span class="edge-node hot">{escape(agent_name(caller))}</span>
+                <span>→</span>
+                {''.join(callee_nodes)}
+              </div>
+            </div>
+            """
+        )
+
+    path_rows = []
+    for item in state["mainline_paths"]:
+        path_rows.append(
             [
-                escape(item["agent_id"]),
-                escape(item["count"]),
-                escape(format_dt(item["last_activity"])),
-                escape(format_age(item["last_activity"])),
+                link(item["task_id"], "/task?" + urlencode({"id": item["task_id"]})),
+                escape(item["state"]),
+                escape(agent_name(item["previous_owner"]) if item["previous_owner"] in AGENT_META else item["previous_owner"]),
+                escape(agent_name(item["current_owner"]) if item["current_owner"] in AGENT_META else item["current_owner"]),
+                escape(agent_name(item["next_owner"]) if item["next_owner"] in AGENT_META else item["next_owner"]),
+                escape(format_dt(item["updated_at"])),
+                escape(item["next_step"]),
             ]
         )
-    body = f"<div class=\"panel\"><h2>Agent 活动</h2>{table(['Agent', 'Sessions', 'Last Activity', 'Age'], rows)}</div>"
-    return layout("Agents", body, "/agents", message)
+
+    rows = []
+    for agent_id in AGENT_META:
+        stats = agent_stats[agent_id]
+        health_label = agent_health(stats)[1]
+        rows.append(
+            [
+                escape(stats["name"]),
+                escape(agent_id),
+                escape(stats["title"]),
+                escape(stats["sessions"]),
+                escape(len(stats["active_tasks"])),
+                escape(stats["running_jobs"]),
+                escape(stats["failed_jobs"]),
+                escape(format_dt(stats["last_activity"])),
+                escape(health_label),
+            ]
+        )
+
+    body = f"""
+    <div class="panel">
+      <h2>团队拓扑</h2>
+      <div class="muted">这里按中文角色名展示团队结构；静态关系来自 `AGENT_GRAPH.md`，动态高亮来自最近 handoff 与运行态。</div>
+      <div class="topology-layer">{''.join(layer_sections)}</div>
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>调度关系</h2>
+        {''.join(relation_rows)}
+      </div>
+      <div class="panel">
+        <h2>当前主线路径</h2>
+        {table(['Task', 'State', '上一步', '当前负责人', '下一站', 'Updated', 'Next Step'], path_rows)}
+      </div>
+    </div>
+    <div class="panel">
+      <h2>团队角色总览</h2>
+      {table(['中文名', 'Agent ID', '职责', 'Sessions', '持有任务', '运行中 Jobs', '失败 Jobs', 'Last Activity', '状态'], rows)}
+    </div>
+    """
+    return layout("团队", body, "/agents", message)
 
 
 def render_handoffs(state: dict, message: str) -> bytes:
@@ -1514,10 +1769,16 @@ def build_handler(config: AppConfig):
                 payload = [
                     {
                         "agent_id": item["agent_id"],
-                        "count": item["count"],
+                        "name": agent_name(item["agent_id"]),
+                        "title": agent_title(item["agent_id"]),
+                        "count": item["sessions"],
+                        "active_task_count": len(item["active_tasks"]),
+                        "running_jobs": item["running_jobs"],
+                        "failed_jobs": item["failed_jobs"],
+                        "health": agent_health(item)[1],
                         "last_activity": item["last_activity"].isoformat() if item["last_activity"] else None,
                     }
-                    for item in state["agents"]
+                    for item in state["agent_stats"].values()
                 ]
                 json_response(self, payload)
                 return
