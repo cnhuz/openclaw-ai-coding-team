@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -25,15 +26,31 @@ def parse_extra_fields(values: list[str]) -> list[tuple[str, str]]:
     return result
 
 
+def detect_from_owner(explicit: str | None) -> str | None:
+    if explicit:
+        return explicit
+
+    env_agent_id = os.environ.get("OPENCLAW_AGENT_ID", "").strip()
+    if env_agent_id:
+        return env_agent_id
+
+    cwd_name = Path.cwd().name
+    if cwd_name.startswith("workspace-") and len(cwd_name) > len("workspace-"):
+        return cwd_name[len("workspace-") :]
+
+    return None
+
+
 def build_handoff_markdown(args: argparse.Namespace, handoff_time: str, extra_fields: list[tuple[str, str]]) -> str:
     evidence_lines = "\n".join(f"- {item}" for item in args.evidence)
     breakpoint_value = "无" if args.closed else args.breakpoint
+    from_owner = detect_from_owner(args.from_owner)
 
     lines = [
         "# Handoff",
         "",
         f"生成时间: {handoff_time}",
-        f"发送方: {args.from_owner or 'unknown'}",
+        f"发送方: {from_owner or 'unknown'}",
         "",
         f"任务ID: {args.task_id}",
         f"当前阶段: {args.current_stage}",

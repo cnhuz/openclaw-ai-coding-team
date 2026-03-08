@@ -24,6 +24,7 @@
 - `prepare_tester_intake.py`：从 captain 任务盘为 tester 生成 verification intake packet
 - `prepare_releaser_intake.py`：从 captain 任务盘为 releaser 生成 release intake packet
 - `prepare_reflector_intake.py`：从 captain 任务盘为 reflector 生成 reflection intake packet，并补齐协议/模板绝对路径
+- `validate_reflection_closeout.py`：校验 reflection 的 Observe Checks 结构与 knowledge proposal 字段
 - `record_research_signal.py`：记录结构化外部信号
 - `triage_research_signals.py`：聚合 signals 并产出机会池
 - `query_research_opportunities.py`：查询机会池
@@ -66,6 +67,7 @@
 - `scripts/prepare_tester_intake.py`
 - `scripts/prepare_releaser_intake.py`
 - `scripts/prepare_reflector_intake.py`
+- `scripts/validate_reflection_closeout.py`
 - `scripts/record_research_signal.py`
 - `scripts/triage_research_signals.py`
 - `scripts/query_research_opportunities.py`
@@ -134,6 +136,8 @@
   - `python3 scripts/prepare_releaser_intake.py --registry-path ~/.openclaw/workspace-aic-captain/tasks/registry.json --handoffs-dir ~/.openclaw/workspace-aic-captain/handoffs --execution-target-path ~/.openclaw/workspace-aic-captain/data/execution-target.json --packet-dir release-intake --owner aic-releaser --state Staging --format md`
 - 生成 reflector intake packet：
   - `python3 scripts/prepare_reflector_intake.py --registry-path ~/.openclaw/workspace-aic-captain/tasks/registry.json --handoffs-dir ~/.openclaw/workspace-aic-captain/handoffs --execution-target-path ~/.openclaw/workspace-aic-captain/data/execution-target.json --packet-dir reflection-intake --owner aic-reflector --state Released --format md`
+- 校验 reflection 收口产物：
+  - `python3 scripts/validate_reflection_closeout.py --packet-path reflection-intake/<task-id>.md --reflection-path /path/to/reflection.md --proposal-path /path/to/proposal.json --format md`
 - 说明：正式任务控制面默认以 `~/.openclaw/workspace-aic-captain/tasks/registry.json` 与 `~/.openclaw/workspace-aic-captain/handoffs/` 为准；执行角色不要只盯自己 workspace 的空任务盘
 - 说明：真正写代码、跑测试、做 release gate 的目标仓库路径默认由 `data/execution-target.json` 声明；builder/tester/releaser 不应把自己的运行态 workspace 当成业务仓库
 - 记录研究信号：

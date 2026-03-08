@@ -220,6 +220,18 @@
 - `reflect-release`
 - 想避免 reflector 还要自己去猜协议路径、模板路径和输出位置时
 
+### `scripts/validate_reflection_closeout.py`
+
+用途：
+
+- 校验 reflection 是否为 packet 中每个 observe check 都提供了结构化结论
+- 校验 knowledge proposal 是否满足模板字段
+
+什么时候用：
+
+- `reflect-release`
+- 想把 `Released -> Closed` 的最后一段从“写了文档”升级成“文档结构也过门禁”时
+
 ## 控制面约定
 
 - 当前团队默认以 `aic-captain` 工作区的 `tasks/registry.json` 作为正式任务控制面

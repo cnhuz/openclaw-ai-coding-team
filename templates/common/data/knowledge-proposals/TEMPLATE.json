@@ -4,5 +4,10 @@
   "source": "memory/YYYY-MM-DD.md",
   "destination": "memory/knowledge/fw-design-decisions.md",
   "action": "append | update | supersede | archive",
-  "summary": "一句话摘要"
+  "summary": "一句话摘要",
+  "rationale": "为什么值得沉淀",
+  "evidence": [
+    "相关证据路径或链接"
+  ],
+  "impact": "会改善什么"
 }
