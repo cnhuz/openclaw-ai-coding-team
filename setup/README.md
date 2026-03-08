@@ -26,6 +26,7 @@
 - 合并 `config/openclaw.agents.snippet.json` 与 `config/openclaw.hooks.snippet.json` 到真实 `openclaw.json`
 - 合并 `config/openclaw.memory.qmd.snippet.json`，把记忆后端切到 `qmd`
 - 初始化结构化任务真相源 `tasks/registry.json`
+- 初始化运行态阶段产物目录 `specs/`、`verification-reports/`、`release-notes/`
 - 初始化 `data/execution-target.json`，让 builder / tester / releaser 知道真正的代码仓库目标
 - 复制运行态 `scripts/`
 - 可选地为每个 workspace 初始化本地 Git 仓库

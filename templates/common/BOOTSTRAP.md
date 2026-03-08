@@ -26,6 +26,9 @@
 - `MEMORY.md`
 - `tasks/registry.json`
 - `tasks/registry.md`
+- `specs/`
+- `verification-reports/`
+- `release-notes/`
 - `memory/`
 - `memory/people/`
 - `memory/knowledge/`

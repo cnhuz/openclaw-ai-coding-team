@@ -16,8 +16,10 @@
 - `memory-hourly.md`
 - `daily-backup.md`
 - `daily-reflection.md`
+- `daily-kpi.md`
 - `daily-curation.md`
 - `memory-weekly.md`
+- `weekly-kpi.md`
 - `research-sprint.md`
 - `ambient-discovery.md`
 - `signal-triage.md`

@@ -124,6 +124,23 @@
 - 替代底层真相源
 - 在没有刷新数据的前提下把 dashboard 当唯一事实
 
+### `scripts/compute_agent_kpi.py`
+
+用途：
+
+- 基于 `tasks/registry.json`、`handoffs/`、`data/exec-logs/`、机会池与阶段产物，计算 Daily / Weekly agent scorecards
+- 输出到 `data/kpi/daily/` 或 `data/kpi/weekly/`
+
+什么时候用：
+
+- 想按证据看“谁真的推进了主线、谁在空转、谁有失败或陈旧任务”时
+- `captain` / `reflector` / `curator` 需要每日或每周做团队评分与复盘时
+
+不要用于：
+
+- 把 session 数或日志数量直接当绩效
+- 在没有写入输出文件的前提下，把一次命令行结果当长期历史
+
 ### `scripts/prepare_exploration_batch.py`
 
 用途：

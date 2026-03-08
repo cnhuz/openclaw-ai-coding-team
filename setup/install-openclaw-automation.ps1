@@ -15,8 +15,10 @@ param(
     [string]$DispatchApprovedEvery = "10m",
     [string]$TesterGateEvery = "15m",
     [string]$ReleaserGateEvery = "20m",
-    [string]$ReflectReleaseEvery = "30m",
-    [string]$SkillScoutEvery = "12h",
+[string]$ReflectReleaseEvery = "30m",
+[string]$DailyKpiCron = "30 0 * * *",
+[string]$WeeklyKpiCron = "50 0 * * 1",
+[string]$SkillScoutEvery = "12h",
     [string]$SkillMaintenanceEvery = "24h",
     [string]$MemoryHourlyEvery = "1h",
     [string]$MemoryAgents = "aic-captain,aic-planner,aic-dispatcher",
@@ -162,6 +164,8 @@ Install-IntervalJob -Name "dispatch-approved" -AgentId "aic-dispatcher" -Every $
 Install-IntervalJob -Name "tester-gate" -AgentId "aic-tester" -Every $TesterGateEvery -PromptPath (Join-Path $promptRoot "tester-gate.md") -Description "Verify build outputs and route them to releaser or back to builder."
 Install-IntervalJob -Name "releaser-gate" -AgentId "aic-releaser" -Every $ReleaserGateEvery -PromptPath (Join-Path $promptRoot "releaser-gate.md") -Description "Apply the release gate and hand released tasks to reflector."
 Install-IntervalJob -Name "reflect-release" -AgentId "aic-reflector" -Every $ReflectReleaseEvery -PromptPath (Join-Path $promptRoot "reflect-release.md") -Description "Close released tasks with reflection and knowledge proposals."
+Install-DailyJob -Name "daily-kpi" -AgentId "aic-captain" -CronExpr $DailyKpiCron -PromptPath (Join-Path $promptRoot "daily-kpi.md") -Description "Compute the daily agent KPI scorecards."
+Install-DailyJob -Name "weekly-kpi" -AgentId "aic-captain" -CronExpr $WeeklyKpiCron -PromptPath (Join-Path $promptRoot "weekly-kpi.md") -Description "Compute the weekly agent KPI scorecards."
 Install-IntervalJob -Name "skill-scout" -AgentId "aic-researcher" -Every $SkillScoutEvery -PromptPath (Join-Path $promptRoot "skill-scout.md") -Description "Discover skill candidates from capability gaps."
 Install-IntervalJob -Name "skill-maintenance" -AgentId "aic-researcher" -Every $SkillMaintenanceEvery -PromptPath (Join-Path $promptRoot "skill-maintenance.md") -Description "Auto-install trusted low-risk skills."
 Install-IntervalJob -Name "research-sprint" -AgentId "aic-researcher" -Every $ResearchEvery -PromptPath (Join-Path $promptRoot "research-sprint.md") -Description "Run one research sprint and push the task toward scope."
@@ -207,6 +211,8 @@ Write-Host ("- skill-scout: every {0}" -f $SkillScoutEvery)
 Write-Host ("- skill-maintenance: every {0}" -f $SkillMaintenanceEvery)
 Write-Host ("- research-sprint: every {0}" -f $ResearchEvery)
 Write-Host ("- build-sprint: every {0}" -f $BuildEvery)
+Write-Host ("- daily-kpi: {0}" -f $DailyKpiCron)
+Write-Host ("- weekly-kpi: {0}" -f $WeeklyKpiCron)
 Write-Host ("- memory-hourly agents: {0} every {1}" -f $MemoryAgents, $MemoryHourlyEvery)
 Write-Host ("- daily-backup agents: {0}" -f $TeamAgents.Count)
 Write-Host "- daily-reflection: 00:10"

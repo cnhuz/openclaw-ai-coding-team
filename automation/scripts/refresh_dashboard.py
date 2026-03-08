@@ -40,6 +40,8 @@ CORE_JOBS = [
     "daily-curation",
     "research-sprint",
     "build-sprint",
+    "daily-kpi",
+    "weekly-kpi",
 ]
 
 OPTIONAL_JOBS = [

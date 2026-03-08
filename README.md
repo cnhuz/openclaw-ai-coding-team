@@ -94,6 +94,7 @@
 
 - `data/research/` 负责探索期弱信号和机会池
 - `tasks/registry.json` 只负责正式交付任务
+- `specs/`、`verification-reports/`、`release-notes/` 分别承载规划、验证、发布阶段的正式产物
 - `site_profiles.json` + `tool_attempts/` 会驱动“热门入口优先、失败后自动换工具、再把经验学回去”的探索回路
 
 ## 预先准备的环境
@@ -311,6 +312,8 @@
 - 第三版控制台已支持任务时间线与基于 `update_task_registry.py` 的任务状态流转
 - 第三版控制台现已补上运行告警与全局事件流，更直观看团队是否在推进主线
 - `Agents` 面板现已升级为中文角色卡、团队拓扑和主线路径，不再只是 `aic-xxx` 列表
+- 控制台现已支持 `/kpi`，可查看 Daily / Weekly agent scorecards，并手动触发 KPI job
+- KPI 引擎第一版：`python3 automation/scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period daily --write`
 - 任务真相源与 handoff
 - 本地 Git 初始化能力
 

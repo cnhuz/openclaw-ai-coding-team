@@ -56,7 +56,7 @@ function Preserve-RuntimeState {
         [string]$WorkspacePath,
         [string]$StashPath
     )
-    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "handoffs")) {
+    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "specs", "verification-reports", "release-notes", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "data/kpi", "handoffs")) {
         $sourcePath = Join-Path $WorkspacePath $relativePath
         if (-not (Test-Path $sourcePath)) {
             continue
@@ -72,7 +72,7 @@ function Restore-RuntimeState {
         [string]$WorkspacePath,
         [string]$StashPath
     )
-    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "handoffs")) {
+    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "specs", "verification-reports", "release-notes", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "data/kpi", "handoffs")) {
         $sourcePath = Join-Path $StashPath $relativePath
         if (-not (Test-Path $sourcePath)) {
             continue
@@ -96,7 +96,7 @@ function Remove-RuntimeBootstrap {
 
 function Ensure-CoreExecLogDirs {
     param([string]$WorkspacePath)
-    foreach ($jobName in @("dashboard-refresh", "ambient-discovery", "signal-triage", "opportunity-deep-dive", "opportunity-promotion", "exploration-learning", "planner-intake", "reviewer-gate", "dispatch-approved", "tester-gate", "releaser-gate", "reflect-release", "skill-scout", "skill-maintenance", "research-sprint", "build-sprint", "daily-reflection", "daily-curation", "daily-backup", "memory-hourly", "memory-weekly")) {
+    foreach ($jobName in @("dashboard-refresh", "ambient-discovery", "signal-triage", "opportunity-deep-dive", "opportunity-promotion", "exploration-learning", "planner-intake", "reviewer-gate", "dispatch-approved", "tester-gate", "releaser-gate", "reflect-release", "daily-kpi", "weekly-kpi", "skill-scout", "skill-maintenance", "research-sprint", "build-sprint", "daily-reflection", "daily-curation", "daily-backup", "memory-hourly", "memory-weekly")) {
         Ensure-Directory -Path (Join-Path $WorkspacePath ("data/exec-logs/{0}" -f $jobName))
     }
 }
@@ -106,7 +106,7 @@ function Ensure-RuntimeDefaults {
         [string]$WorkspacePath,
         [string]$CommonRoot
     )
-    foreach ($relativePath in @("data/execution-target.json", "data/research/site_profiles.json", "data/research/tool_profiles.json", "data/skills/README.md", "data/skills/policy.json", "data/skills/dependency_policy.json", "data/skills/catalog.json")) {
+    foreach ($relativePath in @("data/execution-target.json", "data/research/site_profiles.json", "data/research/tool_profiles.json", "data/skills/README.md", "data/skills/policy.json", "data/skills/dependency_policy.json", "data/skills/catalog.json", "data/kpi/README.md", "data/kpi/rules.v1.json")) {
         $targetPath = Join-Path $WorkspacePath $relativePath
         $sourcePath = Join-Path $CommonRoot $relativePath
         if ((Test-Path $targetPath) -or -not (Test-Path $sourcePath)) {
@@ -249,6 +249,7 @@ function Update-ToolsRuntimeSection {
         "- `scripts/refresh_dashboard.py`：enabled",
         "- `scripts/execution_target.py`：enabled",
         "- `scripts/verify_worktree_lifecycle.py`：enabled",
+        "- `scripts/compute_agent_kpi.py`：enabled",
         "- `scripts/prepare_exploration_batch.py`：enabled",
         "- `scripts/prepare_site_frontier.py`：enabled",
         "- `scripts/prepare_planner_intake.py`：enabled",

@@ -42,6 +42,7 @@
 - `bootstrap_skill_dependency.py`：为 skill 安装缺失的 installer / toolchain 做本地自举
 - `install_skill_candidate.py`：按 policy 自动安装可信低风险 skill
 - `worktree_lifecycle.py`：为单个 agent 管理 git worktree 的 setup / status / cleanup 生命周期元数据与安全清理边界
+- `compute_agent_kpi.py`：按证据计算 Daily / Weekly agent KPI scorecards
 
 它们由本仓库持续维护，目前既包含原有记忆/任务协同脚本，也包含新加入的持续探索脚本。
 
@@ -85,6 +86,7 @@
 - `scripts/bootstrap_skill_dependency.py`
 - `scripts/install_skill_candidate.py`
 - `scripts/worktree_lifecycle.py`
+- `scripts/compute_agent_kpi.py`
 
 这样 cron prompt 可以直接使用相对路径，不必依赖当前仓库结构。
 
@@ -179,6 +181,10 @@
   - `python3 scripts/worktree_lifecycle.py cleanup --repo-root /path/to/repo --agent-id agent-001 --task-id TASK-001`
 - 烟测 lifecycle 工具：
   - `python3 scripts/verify_worktree_lifecycle.py --format md`
+- 计算 Daily KPI：
+  - `python3 scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period daily --format md`
+- 计算 Weekly KPI 并写入运行态：
+  - `python3 scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period weekly --write --format md`
 
 原则：
 

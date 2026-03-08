@@ -17,6 +17,8 @@ DISPATCH_APPROVED_EVERY="10m"
 TESTER_GATE_EVERY="15m"
 RELEASER_GATE_EVERY="20m"
 REFLECT_RELEASE_EVERY="30m"
+DAILY_KPI_CRON="30 0 * * *"
+WEEKLY_KPI_CRON="50 0 * * 1"
 SKILL_SCOUT_EVERY="12h"
 SKILL_MAINTENANCE_EVERY="24h"
 MEMORY_HOURLY_EVERY="1h"
@@ -59,6 +61,8 @@ Options:
   --tester-gate-every <dur>     Tester gate interval, default 15m
   --releaser-gate-every <dur>   Releaser gate interval, default 20m
   --reflect-release-every <dur> Release reflection interval, default 30m
+  --daily-kpi-cron <expr>      Daily KPI cron expression, default "30 0 * * *"
+  --weekly-kpi-cron <expr>     Weekly KPI cron expression, default "50 0 * * 1"
   --skill-scout-every <dur>    Skill scout interval, default 12h
   --skill-maint-every <dur>    Skill maintenance interval, default 24h
   --memory-hourly-every <dur>  Memory-hourly interval, default 1h
@@ -133,6 +137,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --reflect-release-every)
       REFLECT_RELEASE_EVERY="$2"
+      shift 2
+      ;;
+    --daily-kpi-cron)
+      DAILY_KPI_CRON="$2"
+      shift 2
+      ;;
+    --weekly-kpi-cron)
+      WEEKLY_KPI_CRON="$2"
       shift 2
       ;;
     --skill-scout-every)
@@ -402,6 +414,20 @@ install_interval_job \
   "Run one implementation sprint from the build queue."
 
 install_daily_job \
+  "daily-kpi" \
+  "aic-captain" \
+  "$DAILY_KPI_CRON" \
+  "$PROMPT_ROOT/daily-kpi.md" \
+  "Compute the daily agent KPI scorecards."
+
+install_daily_job \
+  "weekly-kpi" \
+  "aic-captain" \
+  "$WEEKLY_KPI_CRON" \
+  "$PROMPT_ROOT/weekly-kpi.md" \
+  "Compute the weekly agent KPI scorecards."
+
+install_daily_job \
   "daily-reflection" \
   "aic-reflector" \
   "10 0 * * *" \
@@ -470,6 +496,8 @@ echo "- skill-scout: every $SKILL_SCOUT_EVERY"
 echo "- skill-maintenance: every $SKILL_MAINTENANCE_EVERY"
 echo "- research-sprint: every $RESEARCH_EVERY"
 echo "- build-sprint: every $BUILD_EVERY"
+echo "- daily-kpi: $DAILY_KPI_CRON"
+echo "- weekly-kpi: $WEEKLY_KPI_CRON"
 echo "- memory-hourly agents: ${MEMORY_AGENTS:-none} every $MEMORY_HOURLY_EVERY"
 echo "- daily-backup agents: ${#TEAM_AGENTS[@]}"
 echo "- daily-reflection: 00:10"

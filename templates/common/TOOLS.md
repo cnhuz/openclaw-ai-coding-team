@@ -45,6 +45,9 @@
 - `data/`：执行日志、dashboard、知识提案
 - `data/github-backup-policy.json`：GitHub 备份与自动建仓策略
 - `handoffs/`：结构化交接产物
+- `specs/`：planner 产出的正式规格
+- `verification-reports/`：tester 产出的验证报告
+- `release-notes/`：releaser 产出的发布记录
 - `tasks/`：本地任务真相源
 
 ## OpenClaw Native Notes

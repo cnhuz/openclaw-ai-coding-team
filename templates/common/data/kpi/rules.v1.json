@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "timezone": "Asia/Shanghai",
+  "periods": {
+    "daily": {
+      "weights": {
+        "health": 15,
+        "compliance": 25,
+        "output": 40,
+        "quality": 20
+      },
+      "stale_hours": 6
+    },
+    "weekly": {
+      "weights": {
+        "health": 10,
+        "compliance": 20,
+        "output": 45,
+        "quality": 25
+      },
+      "stale_hours": 24
+    }
+  },
+  "roles": {
+    "aic-captain": {
+      "name": "船长",
+      "title": "总指挥",
+      "mandatory": true,
+      "relevant_jobs": [
+        "dashboard-refresh",
+        "planner-intake",
+        "opportunity-promotion"
+      ]
+    },
+    "aic-researcher": {
+      "name": "研究官",
+      "title": "需求与机会研究",
+      "mandatory": true,
+      "relevant_jobs": [
+        "ambient-discovery",
+        "signal-triage",
+        "opportunity-deep-dive",
+        "research-sprint",
+        "exploration-learning"
+      ]
+    },
+    "aic-planner": {
+      "name": "规划官",
+      "title": "需求收敛与任务拆解",
+      "mandatory": false,
+      "relevant_jobs": [
+        "planner-intake"
+      ]
+    },
+    "aic-reviewer": {
+      "name": "审议官",
+      "title": "边界与质量把关",
+      "mandatory": false,
+      "relevant_jobs": [
+        "reviewer-gate"
+      ]
+    },
+    "aic-dispatcher": {
+      "name": "调度官",
+      "title": "派发与推进闭环",
+      "mandatory": true,
+      "relevant_jobs": [
+        "dispatch-approved"
+      ]
+    },
+    "aic-builder": {
+      "name": "实现编排官",
+      "title": "实现与编码引擎编排",
+      "mandatory": false,
+      "relevant_jobs": [
+        "build-sprint"
+      ]
+    },
+    "aic-tester": {
+      "name": "验证官",
+      "title": "测试、回归与验收",
+      "mandatory": false,
+      "relevant_jobs": [
+        "tester-gate"
+      ]
+    },
+    "aic-releaser": {
+      "name": "发布官",
+      "title": "上线、回滚与观察",
+      "mandatory": false,
+      "relevant_jobs": [
+        "releaser-gate"
+      ]
+    },
+    "aic-reflector": {
+      "name": "反思官",
+      "title": "复盘与流程修正",
+      "mandatory": false,
+      "relevant_jobs": [
+        "reflect-release",
+        "daily-reflection"
+      ]
+    },
+    "aic-curator": {
+      "name": "典藏官",
+      "title": "知识沉淀与归档",
+      "mandatory": false,
+      "relevant_jobs": [
+        "daily-curation"
+      ]
+    }
+  }
+}
