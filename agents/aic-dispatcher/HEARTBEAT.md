@@ -3,7 +3,7 @@
 收到 heartbeat 时：
 
 1. 先运行 `python3 scripts/validate_task_registry.py --path tasks/registry.json`
-2. 刷新看板：`python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --sessions-root ~/.openclaw/agents --output data/dashboard.md`
+2. 刷新看板：`python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --sessions-root ~/.openclaw/agents --research-root ~/.openclaw/workspace-aic-researcher/data/research --skills-root ~/.openclaw/workspace-aic-researcher/data/skills --output data/dashboard.md`
 3. 再运行 `python3 scripts/query_task_registry.py --path tasks/registry.json --view dispatcher --format md`
 4. 对 `Approved` 任务：
    - 若已经具备明确实现边界，交给 `aic-builder`

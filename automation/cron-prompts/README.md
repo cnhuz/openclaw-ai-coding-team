@@ -24,5 +24,13 @@
 - `opportunity-deep-dive.md`
 - `opportunity-promotion.md`
 - `exploration-learning.md`
+- `planner-intake.md`
+- `reviewer-gate.md`
+- `dispatch-approved.md`
+- `skill-scout.md`
+- `skill-maintenance.md`
 - `build-sprint.md`
+- `tester-gate.md`
+- `releaser-gate.md`
+- `reflect-release.md`
 - `SYNC-PROTOCOL.md`

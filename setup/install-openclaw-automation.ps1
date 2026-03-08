@@ -10,6 +10,14 @@ param(
     [string]$DeepDiveEvery = "2h",
     [string]$PromotionEvery = "4h",
     [string]$ExploreLearnEvery = "6h",
+    [string]$PlannerIntakeEvery = "10m",
+    [string]$ReviewerGateEvery = "15m",
+    [string]$DispatchApprovedEvery = "10m",
+    [string]$TesterGateEvery = "15m",
+    [string]$ReleaserGateEvery = "20m",
+    [string]$ReflectReleaseEvery = "30m",
+    [string]$SkillScoutEvery = "12h",
+    [string]$SkillMaintenanceEvery = "24h",
     [string]$MemoryHourlyEvery = "1h",
     [string]$MemoryAgents = "aic-captain,aic-planner,aic-dispatcher",
     [switch]$SkipIgnite,
@@ -148,6 +156,14 @@ Install-IntervalJob -Name "signal-triage" -AgentId "aic-researcher" -Every $Tria
 Install-IntervalJob -Name "opportunity-deep-dive" -AgentId "aic-researcher" -Every $DeepDiveEvery -PromptPath (Join-Path $promptRoot "opportunity-deep-dive.md") -Description "Deep dive the highest-value research opportunity."
 Install-IntervalJob -Name "opportunity-promotion" -AgentId "aic-captain" -Every $PromotionEvery -PromptPath (Join-Path $promptRoot "opportunity-promotion.md") -Description "Promote mature opportunities into formal tasks."
 Install-IntervalJob -Name "exploration-learning" -AgentId "aic-researcher" -Every $ExploreLearnEvery -PromptPath (Join-Path $promptRoot "exploration-learning.md") -Description "Learn better query expansions and blocked terms from exploration outcomes."
+Install-IntervalJob -Name "planner-intake" -AgentId "aic-planner" -Every $PlannerIntakeEvery -PromptPath (Join-Path $promptRoot "planner-intake.md") -Description "Consume Intake tasks and turn them into concrete specs."
+Install-IntervalJob -Name "reviewer-gate" -AgentId "aic-reviewer" -Every $ReviewerGateEvery -PromptPath (Join-Path $promptRoot "reviewer-gate.md") -Description "Review planned specs and turn them into Approved or Replan."
+Install-IntervalJob -Name "dispatch-approved" -AgentId "aic-dispatcher" -Every $DispatchApprovedEvery -PromptPath (Join-Path $promptRoot "dispatch-approved.md") -Description "Move approved tasks into the builder queue."
+Install-IntervalJob -Name "tester-gate" -AgentId "aic-tester" -Every $TesterGateEvery -PromptPath (Join-Path $promptRoot "tester-gate.md") -Description "Verify build outputs and route them to releaser or back to builder."
+Install-IntervalJob -Name "releaser-gate" -AgentId "aic-releaser" -Every $ReleaserGateEvery -PromptPath (Join-Path $promptRoot "releaser-gate.md") -Description "Apply the release gate and hand released tasks to reflector."
+Install-IntervalJob -Name "reflect-release" -AgentId "aic-reflector" -Every $ReflectReleaseEvery -PromptPath (Join-Path $promptRoot "reflect-release.md") -Description "Close released tasks with reflection and knowledge proposals."
+Install-IntervalJob -Name "skill-scout" -AgentId "aic-researcher" -Every $SkillScoutEvery -PromptPath (Join-Path $promptRoot "skill-scout.md") -Description "Discover skill candidates from capability gaps."
+Install-IntervalJob -Name "skill-maintenance" -AgentId "aic-researcher" -Every $SkillMaintenanceEvery -PromptPath (Join-Path $promptRoot "skill-maintenance.md") -Description "Auto-install trusted low-risk skills."
 Install-IntervalJob -Name "research-sprint" -AgentId "aic-researcher" -Every $ResearchEvery -PromptPath (Join-Path $promptRoot "research-sprint.md") -Description "Run one research sprint and push the task toward scope."
 Install-IntervalJob -Name "build-sprint" -AgentId "aic-builder" -Every $BuildEvery -PromptPath (Join-Path $promptRoot "build-sprint.md") -Description "Run one implementation sprint from the build queue."
 Install-DailyJob -Name "daily-reflection" -AgentId "aic-reflector" -CronExpr "10 0 * * *" -PromptPath (Join-Path $promptRoot "daily-reflection.md") -Description "Run the daily reflection loop."
@@ -181,6 +197,14 @@ Write-Host ("- signal-triage: every {0}" -f $TriageEvery)
 Write-Host ("- opportunity-deep-dive: every {0}" -f $DeepDiveEvery)
 Write-Host ("- opportunity-promotion: every {0}" -f $PromotionEvery)
 Write-Host ("- exploration-learning: every {0}" -f $ExploreLearnEvery)
+Write-Host ("- planner-intake: every {0}" -f $PlannerIntakeEvery)
+Write-Host ("- reviewer-gate: every {0}" -f $ReviewerGateEvery)
+Write-Host ("- dispatch-approved: every {0}" -f $DispatchApprovedEvery)
+Write-Host ("- tester-gate: every {0}" -f $TesterGateEvery)
+Write-Host ("- releaser-gate: every {0}" -f $ReleaserGateEvery)
+Write-Host ("- reflect-release: every {0}" -f $ReflectReleaseEvery)
+Write-Host ("- skill-scout: every {0}" -f $SkillScoutEvery)
+Write-Host ("- skill-maintenance: every {0}" -f $SkillMaintenanceEvery)
 Write-Host ("- research-sprint: every {0}" -f $ResearchEvery)
 Write-Host ("- build-sprint: every {0}" -f $BuildEvery)
 Write-Host ("- memory-hourly agents: {0} every {1}" -f $MemoryAgents, $MemoryHourlyEvery)

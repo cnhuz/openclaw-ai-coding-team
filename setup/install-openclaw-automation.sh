@@ -11,6 +11,14 @@ TRIAGE_EVERY="45m"
 DEEP_DIVE_EVERY="2h"
 PROMOTION_EVERY="4h"
 EXPLORATION_LEARNING_EVERY="6h"
+PLANNER_INTAKE_EVERY="10m"
+REVIEWER_GATE_EVERY="15m"
+DISPATCH_APPROVED_EVERY="10m"
+TESTER_GATE_EVERY="15m"
+RELEASER_GATE_EVERY="20m"
+REFLECT_RELEASE_EVERY="30m"
+SKILL_SCOUT_EVERY="12h"
+SKILL_MAINTENANCE_EVERY="24h"
 MEMORY_HOURLY_EVERY="1h"
 MEMORY_AGENTS="aic-captain,aic-planner,aic-dispatcher"
 SKIP_IGNITE=0
@@ -45,6 +53,14 @@ Options:
   --deep-dive-every <duration> Opportunity deep-dive interval, default 2h
   --promotion-every <duration> Opportunity promotion interval, default 4h
   --explore-learn-every <dur>  Exploration learning interval, default 6h
+  --planner-intake-every <dur> Planner intake interval, default 10m
+  --reviewer-gate-every <dur>  Reviewer gate interval, default 15m
+  --dispatch-approved-every <dur> Dispatch-approved interval, default 10m
+  --tester-gate-every <dur>     Tester gate interval, default 15m
+  --releaser-gate-every <dur>   Releaser gate interval, default 20m
+  --reflect-release-every <dur> Release reflection interval, default 30m
+  --skill-scout-every <dur>    Skill scout interval, default 12h
+  --skill-maint-every <dur>    Skill maintenance interval, default 24h
   --memory-hourly-every <dur>  Memory-hourly interval, default 1h
   --memory-agents <csv>        Agents for memory-hourly / memory-weekly
   --skip-ignite                Skip the final system-event ignition
@@ -93,6 +109,38 @@ while [[ $# -gt 0 ]]; do
       ;;
     --explore-learn-every)
       EXPLORATION_LEARNING_EVERY="$2"
+      shift 2
+      ;;
+    --planner-intake-every)
+      PLANNER_INTAKE_EVERY="$2"
+      shift 2
+      ;;
+    --reviewer-gate-every)
+      REVIEWER_GATE_EVERY="$2"
+      shift 2
+      ;;
+    --dispatch-approved-every)
+      DISPATCH_APPROVED_EVERY="$2"
+      shift 2
+      ;;
+    --tester-gate-every)
+      TESTER_GATE_EVERY="$2"
+      shift 2
+      ;;
+    --releaser-gate-every)
+      RELEASER_GATE_EVERY="$2"
+      shift 2
+      ;;
+    --reflect-release-every)
+      REFLECT_RELEASE_EVERY="$2"
+      shift 2
+      ;;
+    --skill-scout-every)
+      SKILL_SCOUT_EVERY="$2"
+      shift 2
+      ;;
+    --skill-maint-every)
+      SKILL_MAINTENANCE_EVERY="$2"
       shift 2
       ;;
     --memory-hourly-every)
@@ -284,6 +332,62 @@ install_interval_job \
   "Learn better query expansions and blocked terms from exploration outcomes."
 
 install_interval_job \
+  "planner-intake" \
+  "aic-planner" \
+  "$PLANNER_INTAKE_EVERY" \
+  "$PROMPT_ROOT/planner-intake.md" \
+  "Consume Intake tasks and turn them into concrete specs."
+
+install_interval_job \
+  "reviewer-gate" \
+  "aic-reviewer" \
+  "$REVIEWER_GATE_EVERY" \
+  "$PROMPT_ROOT/reviewer-gate.md" \
+  "Review planned specs and turn them into Approved or Replan."
+
+install_interval_job \
+  "dispatch-approved" \
+  "aic-dispatcher" \
+  "$DISPATCH_APPROVED_EVERY" \
+  "$PROMPT_ROOT/dispatch-approved.md" \
+  "Move approved tasks into the builder queue."
+
+install_interval_job \
+  "tester-gate" \
+  "aic-tester" \
+  "$TESTER_GATE_EVERY" \
+  "$PROMPT_ROOT/tester-gate.md" \
+  "Verify build outputs and route them to releaser or back to builder."
+
+install_interval_job \
+  "releaser-gate" \
+  "aic-releaser" \
+  "$RELEASER_GATE_EVERY" \
+  "$PROMPT_ROOT/releaser-gate.md" \
+  "Apply the release gate and hand released tasks to reflector."
+
+install_interval_job \
+  "reflect-release" \
+  "aic-reflector" \
+  "$REFLECT_RELEASE_EVERY" \
+  "$PROMPT_ROOT/reflect-release.md" \
+  "Close released tasks with reflection and knowledge proposals."
+
+install_interval_job \
+  "skill-scout" \
+  "aic-researcher" \
+  "$SKILL_SCOUT_EVERY" \
+  "$PROMPT_ROOT/skill-scout.md" \
+  "Discover skill candidates from capability gaps."
+
+install_interval_job \
+  "skill-maintenance" \
+  "aic-researcher" \
+  "$SKILL_MAINTENANCE_EVERY" \
+  "$PROMPT_ROOT/skill-maintenance.md" \
+  "Auto-install trusted low-risk skills."
+
+install_interval_job \
   "research-sprint" \
   "aic-researcher" \
   "$RESEARCH_EVERY" \
@@ -356,6 +460,14 @@ echo "- signal-triage: every $TRIAGE_EVERY"
 echo "- opportunity-deep-dive: every $DEEP_DIVE_EVERY"
 echo "- opportunity-promotion: every $PROMOTION_EVERY"
 echo "- exploration-learning: every $EXPLORATION_LEARNING_EVERY"
+echo "- planner-intake: every $PLANNER_INTAKE_EVERY"
+echo "- reviewer-gate: every $REVIEWER_GATE_EVERY"
+echo "- dispatch-approved: every $DISPATCH_APPROVED_EVERY"
+echo "- tester-gate: every $TESTER_GATE_EVERY"
+echo "- releaser-gate: every $RELEASER_GATE_EVERY"
+echo "- reflect-release: every $REFLECT_RELEASE_EVERY"
+echo "- skill-scout: every $SKILL_SCOUT_EVERY"
+echo "- skill-maintenance: every $SKILL_MAINTENANCE_EVERY"
 echo "- research-sprint: every $RESEARCH_EVERY"
 echo "- build-sprint: every $BUILD_EVERY"
 echo "- memory-hourly agents: ${MEMORY_AGENTS:-none} every $MEMORY_HOURLY_EVERY"

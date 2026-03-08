@@ -52,6 +52,14 @@
 - `opportunity-deep-dive`：每 `2h` 一轮，对高分候选做深挖
 - `opportunity-promotion`：每 `4h` 一轮，由 captain / planner 决定是否晋升正式任务
 - `exploration-learning`：每 `6h` 一轮，学习高价值来源、query expansion 和噪音词
+- `planner-intake`：每 `10m` 一轮，把 `Intake` 任务收敛成 Spec 并送审
+- `reviewer-gate`：每 `15m` 一轮，审议 `Planned` 任务并推进到 `Approved / Replan`
+- `dispatch-approved`：每 `10m` 一轮，把 `Approved` 任务机械推进到 `Building`
+- `tester-gate`：每 `15m` 一轮，把 `Verifying` 任务推进到 `Staging / Rework`
+- `releaser-gate`：每 `20m` 一轮，把 `Staging` 任务推进到 `Released / Rework`
+- `reflect-release`：每 `30m` 一轮，把 `Released` 任务补齐 reflection 与 knowledge proposal，再关闭任务
+- `skill-scout`：每 `12h` 一轮，寻找技能补位机会
+- `skill-maintenance`：每 `24h` 一轮，自动安装命中 policy 的低风险 skill
 - `research-sprint`：继续保留，用于正式 `Researching` 任务的定向研究
 
 推荐分层：
@@ -64,6 +72,11 @@
 - `data/research/signals/`
 - `data/research/opportunities.json`
 - `data/research/topic_profiles.json`
+- `data/research/site_profiles.json`
+- `data/research/tool_profiles.json`
+- `data/research/tool_attempts/`
+- `data/skills/catalog.json`
+- `data/skills/policy.json`
 - `data/research/source_scores.json`
 - `data/research/opportunity-cards/`
 
@@ -74,6 +87,16 @@
 - 有新任务时立即被调度唤醒
 - backlog 未清时，每 `15m` 或 `30m` 续跑一轮实现 sprint
 - backlog 清空时 no-op，等待下一次派发
+- 正式执行时必须使用控制面声明的真实代码目标：`data/execution-target.json`
+
+## 交付后半段
+
+推荐把交付后半段也做成确定性桥接：
+
+- `build-sprint`：读取 `data/execution-target.json`，在真实 `repo_root` 下实现，并在可验证时交给 tester
+- `tester-gate`：读取相同执行目标与 spec，写 `verification-reports/`
+- `releaser-gate`：按 `release_mode` 生成 `release-notes/` 或执行发布命令
+- `reflect-release`：基于 release note 与 verification report 输出 reflection，并生成知识提案
 
 ## 心跳建议
 
