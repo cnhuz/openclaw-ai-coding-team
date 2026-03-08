@@ -255,6 +255,7 @@ function Update-ToolsRuntimeSection {
         "- `scripts/prepare_builder_intake.py`：enabled",
         "- `scripts/prepare_tester_intake.py`：enabled",
         "- `scripts/prepare_releaser_intake.py`：enabled",
+        "- `scripts/prepare_reflector_intake.py`：enabled",
         "- `scripts/record_research_signal.py`：enabled",
         "- `scripts/triage_research_signals.py`：enabled",
         "- `scripts/query_research_opportunities.py`：enabled",

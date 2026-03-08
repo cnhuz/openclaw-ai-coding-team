@@ -207,6 +207,19 @@
 - `releaser-gate`
 - 想避免 releaser 在缺少发布上下文时空转时
 
+### `scripts/prepare_reflector_intake.py`
+
+用途：
+
+- 从 captain 控制面任务盘里挑出 `owner=aic-reflector` 的 `Released` 任务
+- 生成 reflector 本地 reflection packet
+- 显式补齐 `verification_report`、`release_note`、`knowledge_protocol`、`knowledge_template` 与输出路径
+
+什么时候用：
+
+- `reflect-release`
+- 想避免 reflector 还要自己去猜协议路径、模板路径和输出位置时
+
 ## 控制面约定
 
 - 当前团队默认以 `aic-captain` 工作区的 `tasks/registry.json` 作为正式任务控制面
