@@ -106,6 +106,8 @@ CORE_JOB_NAMES = {
     "signal-triage",
     "opportunity-deep-dive",
     "opportunity-promotion",
+    "daily-kpi",
+    "weekly-kpi",
 }
 
 ALERT_STALE_HOURS = 6
@@ -153,6 +155,10 @@ class AppConfig:
     @property
     def research_root(self) -> Path:
         return self.researcher_workspace / "data/research"
+
+    @property
+    def kpi_root(self) -> Path:
+        return self.captain_workspace / "data/kpi"
 
     @property
     def skills_root(self) -> Path:
@@ -332,6 +338,12 @@ def format_path(path: Path, roots: list[Path]) -> str:
 def resolve_viewable_path(config: AppConfig, raw: str) -> Path | None:
     path = Path(raw).expanduser()
     if not path.is_absolute():
+        candidates = [config.repo_root, *config.workspaces.values()]
+        for base in candidates:
+            candidate = (base / path).resolve()
+            allowed_roots = [config.openclaw_home.resolve(), config.repo_root.resolve()]
+            if any(candidate.is_relative_to(root) for root in allowed_roots) and candidate.exists() and candidate.is_file():
+                return candidate
         path = (config.repo_root / path).resolve()
     else:
         path = path.resolve()
@@ -834,6 +846,33 @@ def build_mainline_paths(state: dict) -> list[dict]:
     return rows
 
 
+def latest_report_file(root: Path) -> Path | None:
+    if not root.exists():
+        return None
+    files = sorted(root.rglob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    if not files:
+        return None
+    return files[0]
+
+
+def load_kpi_report(path: Path | None) -> dict | None:
+    if path is None or not path.exists():
+        return None
+    return load_json(path, {"scorecards": [], "summary": {}})
+
+
+def find_kpi_scorecard(report: dict | None, agent_id: str) -> dict | None:
+    if report is None:
+        return None
+    scorecards = report.get("scorecards", [])
+    if not isinstance(scorecards, list):
+        return None
+    for item in scorecards:
+        if isinstance(item, dict) and item.get("agent_id") == agent_id:
+            return item
+    return None
+
+
 def build_state(config: AppConfig) -> dict:
     cache_key = str(config.openclaw_home.resolve())
     cached = STATE_CACHE.get(cache_key)
@@ -877,6 +916,14 @@ def build_state(config: AppConfig) -> dict:
     state["events"] = build_global_events(state)
     state["agent_stats"] = build_agent_stats(state)
     state["mainline_paths"] = build_mainline_paths(state)
+    daily_kpi_path = latest_report_file(config.kpi_root / "daily")
+    weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
+    state["kpi"] = {
+        "daily_path": daily_kpi_path,
+        "daily_report": load_kpi_report(daily_kpi_path),
+        "weekly_path": weekly_kpi_path,
+        "weekly_report": load_kpi_report(weekly_kpi_path),
+    }
     STATE_CACHE[cache_key] = (now, state)
     return dict(state)
 
@@ -901,6 +948,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
         ("总览", "/"),
         ("任务", "/tasks"),
         ("机会池", "/opportunities"),
+        ("KPI", "/kpi"),
         ("事件流", "/events"),
         ("Handoffs", "/handoffs"),
         ("团队", "/agents"),
@@ -1012,6 +1060,12 @@ def render_summary(state: dict, message: str) -> bytes:
     never_run_core = [job for job in state["never_run_jobs"] if job["name"] in CORE_JOB_NAMES]
     active_agents = [item for item in state["agents"] if item["count"] > 0]
     alerts = state["alerts"]
+    daily_kpi = state["kpi"]["daily_report"]
+    daily_summary = daily_kpi.get("summary", {}) if isinstance(daily_kpi, dict) else {}
+    if isinstance(daily_summary.get("top_agents"), list):
+        daily_top = ", ".join(agent_name(item) for item in daily_summary.get("top_agents", [])[:3])
+    else:
+        daily_top = "-"
 
     cards = "".join(
         [
@@ -1023,6 +1077,7 @@ def render_summary(state: dict, message: str) -> bytes:
             card("运行中的 Jobs", str(len(running_jobs)), "来自 openclaw cron"),
             card("未自然跑过核心 Jobs", str(len(never_run_core)), "需要区分未到时间和未触发"),
             card("活跃 Agents", str(len(active_agents)), "最近有 session"),
+            card("Daily KPI Top", daily_top or "-", "最新评分 Top 3"),
         ]
     )
 
@@ -1116,6 +1171,8 @@ def render_summary(state: dict, message: str) -> bytes:
         {render_job_trigger(state, 'planner-intake', '/')}
         {render_job_trigger(state, 'ambient-discovery', '/')}
         {render_job_trigger(state, 'opportunity-promotion', '/')}
+        {render_job_trigger(state, 'daily-kpi', '/')}
+        {render_job_trigger(state, 'weekly-kpi', '/')}
       </div>
       <div class="hint">默认只绑定本机地址。若要公网访问，建议放到反向代理和鉴权后面。</div>
     </div>
@@ -1420,6 +1477,108 @@ def render_events(state: dict, message: str) -> bytes:
     return layout("Events", body, "/events", message)
 
 
+def render_kpi(state: dict, message: str) -> bytes:
+    daily_report = state["kpi"]["daily_report"]
+    weekly_report = state["kpi"]["weekly_report"]
+    daily_path = state["kpi"]["daily_path"]
+    weekly_path = state["kpi"]["weekly_path"]
+
+    def render_report_section(title: str, report: dict | None, report_path: Path | None, period: str) -> str:
+        if report is None:
+            return f"<div class=\"panel\"><h2>{escape(title)}</h2><div class=\"muted\">暂无评分文件</div></div>"
+        summary = report.get("summary", {})
+        scorecards = report.get("scorecards", [])
+        top_agents = ", ".join(summary.get("top_agents", [])) if isinstance(summary.get("top_agents"), list) else "-"
+        risk_agents = ", ".join(summary.get("risk_agents", [])) if isinstance(summary.get("risk_agents"), list) else "-"
+        rows = []
+        for item in scorecards:
+            if not isinstance(item, dict):
+                continue
+            rows.append(
+                [
+                    link(agent_name(str(item.get("agent_id", "-"))), "/kpi/agent?" + urlencode({"id": str(item.get("agent_id", "")), "period": period})),
+                    escape(item.get("agent_id", "-")),
+                    escape(item.get("status", "-")),
+                    escape(item.get("score_total", "N/A")),
+                    escape(len(item.get("highlights", [])) if isinstance(item.get("highlights"), list) else 0),
+                    escape(len(item.get("risks", [])) if isinstance(item.get("risks"), list) else 0),
+                ]
+            )
+        meta = [
+            ("window_start", escape(report.get("window_start", "-"))),
+            ("window_end", escape(report.get("window_end", "-"))),
+            ("top_agents", escape(top_agents or "-")),
+            ("risk_agents", escape(risk_agents or "-")),
+            ("output", link(format_path(report_path, [state["config"].openclaw_home, state["config"].repo_root]), file_path_to_url(report_path)) if report_path else "-"),
+        ]
+        return render_kv_table(title, meta) + table(["Agent", "Agent ID", "Status", "Score", "Highlights", "Risks"], rows)
+
+    actions = f"""
+    <div class="panel">
+      <h2>快捷操作</h2>
+      <div class="actions">
+        {render_job_trigger(state, 'daily-kpi', '/kpi')}
+        {render_job_trigger(state, 'weekly-kpi', '/kpi')}
+      </div>
+    </div>
+    """
+    body = actions + render_report_section("Daily KPI", daily_report, daily_path, "daily") + render_report_section("Weekly KPI", weekly_report, weekly_path, "weekly")
+    return layout("KPI", body, "/kpi", message)
+
+
+def render_kpi_agent(state: dict, agent_id: str, period: str, message: str) -> bytes:
+    report = state["kpi"]["daily_report"] if period == "daily" else state["kpi"]["weekly_report"]
+    scorecard = find_kpi_scorecard(report, agent_id)
+    if scorecard is None:
+        return layout("KPI Agent", f"<div class=\"panel\"><h2>KPI</h2><div class=\"muted\">未找到该 agent 的 {escape(period)} 评分</div></div>", "/kpi", message)
+
+    breakdown_rows = [
+        [escape(key), escape(value if value is not None else "N/A")]
+        for key, value in scorecard.get("score_breakdown", {}).items()
+    ]
+    metric_rows = []
+    for item in scorecard.get("metrics", []):
+        metric_rows.append(
+            [
+                escape(item.get("group", "-")),
+                escape(item.get("metric_id", "-")),
+                escape(item.get("value", "-")),
+                escape(item.get("target", "-")),
+                escape(item.get("score", "-")),
+            ]
+        )
+    evidence_rows = []
+    for item in scorecard.get("evidence", []):
+        evidence_rows.append([evidence_links(state["config"], [item])])
+
+    facts_rows = [
+        [escape(key), escape(value)]
+        for key, value in scorecard.get("facts", {}).items()
+    ]
+    highlights = scorecard.get("highlights", [])
+    risks = scorecard.get("risks", [])
+    body = f"""
+    {render_kv_table('评分概览', [
+        ('agent', escape(agent_name(agent_id))),
+        ('agent_id', escape(agent_id)),
+        ('period', escape(period)),
+        ('status', escape(scorecard.get('status', '-'))),
+        ('score_total', escape(scorecard.get('score_total', 'N/A')))
+    ])}
+    <div class="row two">
+      <div class="panel"><h2>分项评分</h2>{table(['Item', 'Score'], breakdown_rows)}</div>
+      <div class="panel"><h2>事实摘要</h2>{table(['Key', 'Value'], facts_rows)}</div>
+    </div>
+    <div class="row two">
+      <div class="panel"><h2>亮点</h2><ul>{''.join(f'<li>{escape(item)}</li>' for item in highlights) or '<li class="muted">暂无</li>'}</ul></div>
+      <div class="panel"><h2>风险</h2><ul>{''.join(f'<li>{escape(item)}</li>' for item in risks) or '<li class="muted">暂无</li>'}</ul></div>
+    </div>
+    <div class="panel"><h2>指标明细</h2>{table(['Group', 'Metric', 'Value', 'Target', 'Score'], metric_rows)}</div>
+    <div class="panel"><h2>证据</h2>{table(['Path'], evidence_rows)}</div>
+    """
+    return layout(f"KPI {agent_name(agent_id)}", body, "/kpi", message)
+
+
 def render_cron(state: dict, message: str) -> bytes:
     rows = []
     for job in state["cron_jobs"]:
@@ -1700,6 +1859,14 @@ def build_handler(config: AppConfig):
             if parsed.path == "/opportunities":
                 html_response(self, render_opportunities(state, message))
                 return
+            if parsed.path == "/kpi":
+                html_response(self, render_kpi(state, message))
+                return
+            if parsed.path == "/kpi/agent":
+                agent_id = query.get("id", [""])[0]
+                period = query.get("period", ["daily"])[0]
+                html_response(self, render_kpi_agent(state, agent_id, period, message))
+                return
             if parsed.path == "/events":
                 html_response(self, render_events(state, message))
                 return
@@ -1781,6 +1948,29 @@ def build_handler(config: AppConfig):
                     for item in state["agent_stats"].values()
                 ]
                 json_response(self, payload)
+                return
+            if parsed.path == "/api/kpi":
+                payload = {
+                    "daily": {
+                        "path": str(state["kpi"]["daily_path"]) if state["kpi"]["daily_path"] else None,
+                        "report": state["kpi"]["daily_report"],
+                    },
+                    "weekly": {
+                        "path": str(state["kpi"]["weekly_path"]) if state["kpi"]["weekly_path"] else None,
+                        "report": state["kpi"]["weekly_report"],
+                    },
+                }
+                json_response(self, payload)
+                return
+            if parsed.path == "/api/kpi/agent":
+                agent_id = query.get("id", [""])[0]
+                period = query.get("period", ["daily"])[0]
+                report = state["kpi"]["daily_report"] if period == "daily" else state["kpi"]["weekly_report"]
+                scorecard = find_kpi_scorecard(report, agent_id)
+                if scorecard is None:
+                    json_response(self, {"ok": False, "error": "kpi scorecard not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                json_response(self, scorecard)
                 return
             if parsed.path == "/api/events":
                 payload = [

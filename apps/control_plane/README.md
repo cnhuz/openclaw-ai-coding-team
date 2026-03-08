@@ -53,6 +53,7 @@ http://127.0.0.1:8765
 - `/`：总览
 - `/tasks`：正式任务控制面
 - `/opportunities`：机会池
+- `/kpi`：Daily / Weekly KPI
 - `/agents`：团队拓扑与角色状态
 - `/cron`：cron 管理
 - `/logs`：最近执行日志
@@ -68,10 +69,13 @@ http://127.0.0.1:8765
 - 手动触发 cron
 - 手动晋升 `ready_review` 机会
 - 更新任务的 `state / owner / priority / next_step / blocker`
+- 手动触发 `daily-kpi` / `weekly-kpi`
 
 ## API
 
 - `/api/summary`
+- `/api/kpi`
+- `/api/kpi/agent?id=...&period=daily|weekly`
 - `/api/tasks`
 - `/api/task?id=...`
 - `/api/opportunities`
