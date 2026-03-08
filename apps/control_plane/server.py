@@ -6,6 +6,7 @@ import argparse
 import html
 import json
 import subprocess
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,35 @@ STATUS_ORDER = {
     "rejected": 4,
 }
 
+TASK_STATE_OPTIONS = [
+    "Intake",
+    "Researching",
+    "Scoped",
+    "Planned",
+    "Approved",
+    "Building",
+    "Verifying",
+    "Staging",
+    "Released",
+    "Observing",
+    "Closed",
+    "Replan",
+    "Rework",
+]
+
+OWNER_OPTIONS = [
+    "aic-captain",
+    "aic-researcher",
+    "aic-planner",
+    "aic-reviewer",
+    "aic-dispatcher",
+    "aic-builder",
+    "aic-tester",
+    "aic-releaser",
+    "aic-reflector",
+    "aic-curator",
+]
+
 CORE_JOB_NAMES = {
     "dashboard-refresh",
     "planner-intake",
@@ -36,6 +66,13 @@ CORE_JOB_NAMES = {
     "opportunity-deep-dive",
     "opportunity-promotion",
 }
+
+ALERT_STALE_HOURS = 6
+ALERT_CRITICAL_STALE_HOURS = 24
+COMMAND_CACHE_TTL_SECONDS = 5.0
+COMMAND_CACHE: dict[str, tuple[float, dict]] = {}
+STATE_CACHE_TTL_SECONDS = 10.0
+STATE_CACHE: dict[str, tuple[float, dict]] = {}
 
 
 @dataclass(frozen=True)
@@ -182,6 +219,30 @@ def run_json_command(command: list[str]) -> dict:
     return json.loads(result.stdout)
 
 
+def run_cached_json_command(cache_key: str, command: list[str], ttl_seconds: float = COMMAND_CACHE_TTL_SECONDS) -> dict:
+    cached = COMMAND_CACHE.get(cache_key)
+    now = time.monotonic()
+    if cached is not None and now - cached[0] < ttl_seconds:
+        return cached[1]
+    payload = run_json_command(command)
+    COMMAND_CACHE[cache_key] = (now, payload)
+    return payload
+
+
+def invalidate_command_cache(cache_key: str | None = None) -> None:
+    if cache_key is None:
+        COMMAND_CACHE.clear()
+        return
+    COMMAND_CACHE.pop(cache_key, None)
+
+
+def invalidate_state_cache(cache_key: str | None = None) -> None:
+    if cache_key is None:
+        STATE_CACHE.clear()
+        return
+    STATE_CACHE.pop(cache_key, None)
+
+
 def run_command(command: list[str]) -> dict[str, object]:
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     return {
@@ -241,6 +302,22 @@ def evidence_links(config: AppConfig, values: list[str]) -> str:
     return "<br>".join(parts) if parts else "<em>none</em>"
 
 
+def select_html(name: str, values: list[str], current: str) -> str:
+    options = ['<option value=""></option>']
+    for item in values:
+        selected = " selected" if item == current else ""
+        options.append(f"<option value=\"{escape(item)}\"{selected}>{escape(item)}</option>")
+    return f"<select name=\"{escape(name)}\">{''.join(options)}</select>"
+
+
+def input_html(name: str, value: str, placeholder: str = "") -> str:
+    return f"<input name=\"{escape(name)}\" value=\"{escape(value)}\" placeholder=\"{escape(placeholder)}\">"
+
+
+def textarea_html(name: str, value: str, placeholder: str = "", rows: int = 3) -> str:
+    return f"<textarea name=\"{escape(name)}\" rows=\"{rows}\" placeholder=\"{escape(placeholder)}\">{escape(value)}</textarea>"
+
+
 def find_task(tasks: list[dict], task_id: str) -> dict | None:
     for task in tasks:
         if task.get("task_id") == task_id:
@@ -283,7 +360,7 @@ def load_opportunities(config: AppConfig) -> list[dict]:
 
 
 def load_agents() -> list[dict]:
-    payload = run_json_command(["openclaw", "status", "--deep", "--json"])
+    payload = run_cached_json_command("openclaw-status", ["openclaw", "status", "--deep", "--json"])
     if not payload.get("ok", True) and "sessions" not in payload:
         return []
     rows: list[dict] = []
@@ -302,7 +379,7 @@ def load_agents() -> list[dict]:
 
 
 def load_cron_jobs() -> list[dict]:
-    payload = run_json_command(["openclaw", "cron", "list", "--json"])
+    payload = run_cached_json_command("openclaw-cron-list", ["openclaw", "cron", "list", "--json"])
     if not payload.get("ok", True) and "jobs" not in payload:
         return []
     rows: list[dict] = []
@@ -383,7 +460,244 @@ def load_recent_logs(config: AppConfig, limit: int = 20) -> list[dict]:
     return rows[:limit]
 
 
+def load_task_handoffs(config: AppConfig, task_id: str) -> list[dict]:
+    rows: list[dict] = []
+    for path in sorted(config.handoffs_dir.rglob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
+        if path.name == "README.md" or path.name == "TEMPLATE.md":
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        sender = "-"
+        current_task_id = "-"
+        current_stage = "-"
+        for line in lines:
+            if line.startswith("发送方: "):
+                sender = line.split(": ", 1)[1]
+            elif line.startswith("任务ID: "):
+                current_task_id = line.split(": ", 1)[1]
+            elif line.startswith("当前阶段: "):
+                current_stage = line.split(": ", 1)[1]
+        if current_task_id != task_id:
+            continue
+        rows.append(
+            {
+                "path": path,
+                "task_id": current_task_id,
+                "sender": sender,
+                "current_stage": current_stage,
+                "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
+            }
+        )
+    return rows
+
+
+def load_task_logs(config: AppConfig, task_id: str) -> list[dict]:
+    rows: list[dict] = []
+    for agent_id, workspace in config.workspaces.items():
+        log_root = workspace / "data/exec-logs"
+        if not log_root.exists():
+            continue
+        for path in log_root.rglob("*.md"):
+            if task_id not in path.name:
+                continue
+            rows.append(
+                {
+                    "agent_id": agent_id,
+                    "job_name": path.parent.name,
+                    "path": path,
+                    "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
+                }
+            )
+    rows.sort(key=lambda item: item["updated_at"], reverse=True)
+    return rows
+
+
+def build_task_timeline(config: AppConfig, task: dict, handoffs: list[dict], logs: list[dict]) -> list[dict]:
+    events: list[dict] = []
+    updated_at = parse_iso(task.get("updated_at"))
+    if updated_at is not None:
+        events.append(
+            {
+                "when": updated_at,
+                "kind": "registry",
+                "actor": task.get("owner", "-"),
+                "summary": f"registry -> {task.get('state', '-')}",
+                "details": task.get("next_step", ""),
+                "path": config.registry_path,
+            }
+        )
+
+    for item in handoffs:
+        events.append(
+            {
+                "when": item["updated_at"],
+                "kind": "handoff",
+                "actor": item["sender"],
+                "summary": f"handoff -> {item['current_stage']}",
+                "details": item["path"].name,
+                "path": item["path"],
+            }
+        )
+
+    for item in logs:
+        events.append(
+            {
+                "when": item["updated_at"],
+                "kind": "exec-log",
+                "actor": item["agent_id"],
+                "summary": item["job_name"],
+                "details": item["path"].name,
+                "path": item["path"],
+            }
+        )
+
+    evidence = task.get("evidence_pointer", [])
+    if isinstance(evidence, list):
+        for raw in evidence:
+            resolved = resolve_viewable_path(config, raw)
+            if resolved is None or resolved == config.registry_path:
+                continue
+            events.append(
+                {
+                    "when": datetime.fromtimestamp(resolved.stat().st_mtime, tz=timezone.utc),
+                    "kind": "evidence",
+                    "actor": "-",
+                    "summary": resolved.name,
+                    "details": format_path(resolved, [config.openclaw_home, config.repo_root]),
+                    "path": resolved,
+                }
+            )
+
+    events.sort(key=lambda item: item["when"], reverse=True)
+    return events
+
+
+def build_global_events(state: dict, limit: int = 80) -> list[dict]:
+    config: AppConfig = state["config"]
+    events: list[dict] = []
+
+    for task in state["active_tasks"]:
+        updated_at = parse_iso(task.get("updated_at"))
+        if updated_at is None:
+            continue
+        events.append(
+            {
+                "when": updated_at,
+                "kind": "task",
+                "actor": task.get("owner", "-"),
+                "task_id": task.get("task_id", "-"),
+                "summary": f"{task.get('task_id', '-')} -> {task.get('state', '-')}",
+                "path": config.registry_path,
+            }
+        )
+
+    for item in state["recent_handoffs"]:
+        events.append(
+            {
+                "when": item["updated_at"],
+                "kind": "handoff",
+                "actor": item["sender"],
+                "task_id": item["task_id"],
+                "summary": f"{item['task_id']} -> {item['current_stage']}",
+                "path": item["path"],
+            }
+        )
+
+    for item in state["recent_logs"]:
+        task_id = "-"
+        for part in item["path"].stem.split("-"):
+            if part.startswith("TASK"):
+                task_id = item["path"].stem
+                break
+        events.append(
+            {
+                "when": item["updated_at"],
+                "kind": "exec-log",
+                "actor": item["agent_id"],
+                "task_id": task_id,
+                "summary": f"{item['agent_id']} / {item['job_name']}",
+                "path": item["path"],
+            }
+        )
+
+    events.sort(key=lambda item: item["when"], reverse=True)
+    return events[:limit]
+
+
+def build_alerts(state: dict) -> list[dict]:
+    alerts: list[dict] = []
+    now = datetime.now(timezone.utc)
+
+    for task in state["stale_active_tasks"]:
+        updated_at = parse_iso(task.get("updated_at"))
+        age_hours = int((now - updated_at).total_seconds() // 3600) if updated_at is not None else 999
+        level = "danger" if age_hours >= ALERT_CRITICAL_STALE_HOURS else "warn"
+        alerts.append(
+            {
+                "level": level,
+                "title": "主线任务陈旧",
+                "summary": f"{task.get('task_id', '-')} 已 {age_hours}h 未更新，当前 {task.get('state', '-')}/{task.get('owner', '-')}",
+                "href": "/task?" + urlencode({"id": str(task.get("task_id", ""))}),
+            }
+        )
+
+    if state["failed_jobs"]:
+        for job in state["failed_jobs"][:5]:
+            alerts.append(
+                {
+                    "level": "danger",
+                    "title": "Cron 连续失败",
+                    "summary": f"{job['name']} / {job['agent_id']}，status={job['last_run_status']}，errors={job['consecutive_errors']}",
+                    "href": "/cron",
+                }
+            )
+
+    never_run_core = [job for job in state["never_run_jobs"] if job["name"] in CORE_JOB_NAMES]
+    for job in never_run_core[:5]:
+        alerts.append(
+            {
+                "level": "warn",
+                "title": "核心 Job 未自然跑过",
+                "summary": f"{job['name']} / {job['agent_id']} 还没有首轮自然执行记录",
+                "href": "/cron",
+            }
+        )
+
+    ready_review = state["opportunity_counts"].get("ready_review", 0)
+    if ready_review > 0:
+        alerts.append(
+            {
+                "level": "warn",
+                "title": "机会池待晋升",
+                "summary": f"当前有 {ready_review} 个 ready_review 机会未转正式任务",
+                "href": "/opportunities?" + urlencode({"status": "ready_review"}),
+            }
+        )
+
+    captain_owned = [
+        task
+        for task in state["active_tasks"]
+        if task.get("owner") == "aic-captain" and task.get("state") not in {"Closed", "Observing"}
+    ]
+    for task in captain_owned[:3]:
+        alerts.append(
+            {
+                "level": "warn",
+                "title": "Captain 仍持有执行任务",
+                "summary": f"{task.get('task_id', '-')} 还停在 captain 手里，当前 {task.get('state', '-')}",
+                "href": "/task?" + urlencode({"id": str(task.get("task_id", ""))}),
+            }
+        )
+
+    return alerts
+
+
 def build_state(config: AppConfig) -> dict:
+    cache_key = str(config.openclaw_home.resolve())
+    cached = STATE_CACHE.get(cache_key)
+    now = time.monotonic()
+    if cached is not None and now - cached[0] < STATE_CACHE_TTL_SECONDS:
+        return dict(cached[1])
+
     tasks = load_tasks(config)
     opportunities = load_opportunities(config)
     agents = load_agents()
@@ -400,7 +714,7 @@ def build_state(config: AppConfig) -> dict:
     running_jobs = [job for job in cron_jobs if job["running"]]
     never_run_jobs = [job for job in cron_jobs if job["last_run_at"] is None]
     failed_jobs = [job for job in cron_jobs if job["consecutive_errors"] > 0 or job["last_run_status"] == "failed"]
-    return {
+    state = {
         "config": config,
         "tasks": tasks,
         "active_tasks": active_tasks,
@@ -416,6 +730,10 @@ def build_state(config: AppConfig) -> dict:
         "recent_handoffs": load_recent_handoffs(config),
         "recent_logs": load_recent_logs(config),
     }
+    state["alerts"] = build_alerts(state)
+    state["events"] = build_global_events(state)
+    STATE_CACHE[cache_key] = (now, state)
+    return dict(state)
 
 
 def table(headers: list[str], rows: list[list[str]]) -> str:
@@ -438,6 +756,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
         ("总览", "/"),
         ("任务", "/tasks"),
         ("机会池", "/opportunities"),
+        ("事件流", "/events"),
         ("Handoffs", "/handoffs"),
         ("Agents", "/agents"),
         ("Cron", "/cron"),
@@ -497,9 +816,13 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
     .pill {{ display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; }}
     form.inline {{ display: inline; }}
     button {{ cursor: pointer; border: 1px solid var(--border); background: #182443; color: var(--text); padding: 6px 10px; border-radius: 8px; }}
+    input, select, textarea {{ width: 100%; border: 1px solid var(--border); background: #0f1832; color: var(--text); padding: 8px 10px; border-radius: 8px; }}
     .actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+    .form-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }}
+    .form-grid .full {{ grid-column: 1 / -1; }}
     @media (max-width: 980px) {{
       .two, .three {{ grid-template-columns: 1fr; }}
+      .form-grid {{ grid-template-columns: 1fr; }}
     }}
   </style>
 </head>
@@ -527,6 +850,7 @@ def render_summary(state: dict, message: str) -> bytes:
     running_jobs = state["running_jobs"]
     never_run_core = [job for job in state["never_run_jobs"] if job["name"] in CORE_JOB_NAMES]
     active_agents = [item for item in state["agents"] if item["count"] > 0]
+    alerts = state["alerts"]
 
     cards = "".join(
         [
@@ -600,6 +924,26 @@ def render_summary(state: dict, message: str) -> bytes:
             ]
         )
 
+    alert_rows = [
+        [
+            f"<span class=\"pill {escape(item['level'])}\">{escape(item['level'])}</span>",
+            escape(item["title"]),
+            link(item["summary"], item["href"]),
+        ]
+        for item in alerts[:12]
+    ]
+
+    event_rows = [
+        [
+            escape(format_dt(item["when"])),
+            escape(item["kind"]),
+            escape(item["actor"]),
+            escape(item["task_id"]),
+            link(item["summary"], file_path_to_url(item["path"])),
+        ]
+        for item in state["events"][:12]
+    ]
+
     quick_actions = f"""
     <div class="panel">
       <h2>快捷操作</h2>
@@ -638,6 +982,16 @@ def render_summary(state: dict, message: str) -> bytes:
         {table(['Job', 'Agent', 'Status', 'Last Run', 'Next Run', 'Action'], job_rows)}
       </div>
       {quick_actions}
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>运行告警</h2>
+        {table(['Level', 'Type', 'Summary'], alert_rows)}
+      </div>
+      <div class="panel">
+        <h2>全局事件流</h2>
+        {table(['Time', 'Kind', 'Actor', 'Task', 'Summary'], event_rows)}
+      </div>
     </div>
     <div class="row two">
       <div class="panel">
@@ -777,6 +1131,40 @@ def render_handoffs(state: dict, message: str) -> bytes:
     return layout("Handoffs", body, "/handoffs", message)
 
 
+def render_events(state: dict, message: str) -> bytes:
+    query = state["query"]
+    kind_filter = query.get("kind", [""])[0]
+    actor_filter = query.get("actor", [""])[0]
+    rows = []
+    for item in state["events"]:
+        if kind_filter and item["kind"] != kind_filter:
+            continue
+        if actor_filter and item["actor"] != actor_filter:
+            continue
+        rows.append(
+            [
+                escape(format_dt(item["when"])),
+                escape(item["kind"]),
+                escape(item["actor"]),
+                escape(item["task_id"]),
+                link(format_path(item["path"], [state["config"].openclaw_home, state["config"].repo_root]), file_path_to_url(item["path"])),
+                escape(item["summary"]),
+            ]
+        )
+    filters = f"""
+    <div class="panel">
+      <h2>过滤</h2>
+      <form method="get" action="/events" class="actions">
+        <input name="kind" placeholder="kind" value="{escape(kind_filter)}">
+        <input name="actor" placeholder="actor" value="{escape(actor_filter)}">
+        <button type="submit">过滤</button>
+      </form>
+    </div>
+    """
+    body = filters + f"<div class=\"panel\"><h2>全局事件流</h2>{table(['Time', 'Kind', 'Actor', 'Task', 'File', 'Summary'], rows)}</div>"
+    return layout("Events", body, "/events", message)
+
+
 def render_cron(state: dict, message: str) -> bytes:
     rows = []
     for job in state["cron_jobs"]:
@@ -827,8 +1215,9 @@ def render_kv_table(title: str, rows: list[tuple[str, str]]) -> str:
 def render_task_detail(state: dict, task: dict, message: str) -> bytes:
     config: AppConfig = state["config"]
     evidence = task.get("evidence_pointer", [])
-    handoffs = [item for item in state["recent_handoffs"] if item["task_id"] == task["task_id"]]
-    logs = [item for item in state["recent_logs"] if task["task_id"] in item["path"].name]
+    handoffs = load_task_handoffs(config, task["task_id"])
+    logs = load_task_logs(config, task["task_id"])
+    timeline = build_task_timeline(config, task, handoffs, logs)
     details = render_kv_table(
         "任务详情",
         [
@@ -843,6 +1232,7 @@ def render_task_detail(state: dict, task: dict, message: str) -> bytes:
             ("evidence", evidence_links(config, evidence if isinstance(evidence, list) else [])),
         ],
     )
+    blocker_value = task.get("blocker") if isinstance(task.get("blocker"), str) else ""
     handoff_rows = [
         [
             escape(item["sender"]),
@@ -861,7 +1251,57 @@ def render_task_detail(state: dict, task: dict, message: str) -> bytes:
         ]
         for item in logs
     ]
+    timeline_rows = [
+        [
+            escape(format_dt(item["when"])),
+            escape(item["kind"]),
+            escape(item["actor"]),
+            escape(item["summary"]),
+            link(format_path(item["path"], [config.openclaw_home, config.repo_root]), file_path_to_url(item["path"])),
+        ]
+        for item in timeline[:40]
+    ]
     actions = f"""
+    <div class="panel">
+      <h2>任务流转</h2>
+      <form method="post" action="/actions/update-task">
+        <input type="hidden" name="task_id" value="{escape(task['task_id'])}">
+        <input type="hidden" name="next" value="/task?id={escape(task['task_id'])}">
+        <div class="form-grid">
+          <div>
+            <label>State</label>
+            {select_html("state", TASK_STATE_OPTIONS, str(task.get("state", "")))}
+          </div>
+          <div>
+            <label>Owner</label>
+            {select_html("owner", OWNER_OPTIONS, str(task.get("owner", "")))}
+          </div>
+          <div>
+            <label>Priority</label>
+            {input_html("priority", str(task.get("priority", "")), "P1")}
+          </div>
+          <div>
+            <label>Clear blocker</label>
+            <div class="actions"><label><input style="width:auto" type="checkbox" name="clear_blocker" value="1"> clear</label></div>
+          </div>
+          <div class="full">
+            <label>Next step</label>
+            {textarea_html("next_step", str(task.get("next_step", "")), "下一步", 3)}
+          </div>
+          <div class="full">
+            <label>Blocker</label>
+            {textarea_html("blocker", blocker_value, "阻塞原因；若要清空请勾选 clear blocker", 3)}
+          </div>
+          <div class="full">
+            <label>Note</label>
+            {input_html("note", "", "写入 task.notes，便于审计")}
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button type="submit">更新任务</button>
+        </div>
+      </form>
+    </div>
     <div class="panel">
       <h2>快捷操作</h2>
       <div class="actions">
@@ -872,7 +1312,13 @@ def render_task_detail(state: dict, task: dict, message: str) -> bytes:
       </div>
     </div>
     """
-    body = details + actions + table(["From", "Stage", "Updated", "File"], handoff_rows) + table(["Agent", "Job", "Updated", "Log"], log_rows)
+    body = (
+        details
+        + actions
+        + table(["Time", "Kind", "Actor", "Summary", "File"], timeline_rows)
+        + table(["From", "Stage", "Updated", "File"], handoff_rows)
+        + table(["Agent", "Job", "Updated", "Log"], log_rows)
+    )
     return layout(f"Task {task['task_id']}", body, "/tasks", message)
 
 
@@ -999,6 +1445,9 @@ def build_handler(config: AppConfig):
             if parsed.path == "/opportunities":
                 html_response(self, render_opportunities(state, message))
                 return
+            if parsed.path == "/events":
+                html_response(self, render_events(state, message))
+                return
             if parsed.path == "/opportunity":
                 opportunity_id = query.get("id", [""])[0]
                 opportunity = find_opportunity(state["opportunities"], opportunity_id)
@@ -1072,6 +1521,23 @@ def build_handler(config: AppConfig):
                 ]
                 json_response(self, payload)
                 return
+            if parsed.path == "/api/events":
+                payload = [
+                    {
+                        "when": item["when"].isoformat(),
+                        "kind": item["kind"],
+                        "actor": item["actor"],
+                        "task_id": item["task_id"],
+                        "summary": item["summary"],
+                        "path": str(item["path"]),
+                    }
+                    for item in state["events"]
+                ]
+                json_response(self, payload)
+                return
+            if parsed.path == "/api/alerts":
+                json_response(self, state["alerts"])
+                return
             if parsed.path == "/api/cron":
                 payload = [
                     {
@@ -1100,6 +1566,8 @@ def build_handler(config: AppConfig):
 
             if parsed.path == "/actions/refresh-dashboard":
                 result = run_command(config.refresh_dashboard_command())
+                invalidate_command_cache()
+                invalidate_state_cache()
                 message = "dashboard refreshed" if result["ok"] else f"refresh failed: {result['stderr'] or result['stdout']}"
                 redirect_with_message(self, next_location, str(message))
                 return
@@ -1114,6 +1582,8 @@ def build_handler(config: AppConfig):
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
+                invalidate_command_cache("openclaw-cron-list")
+                invalidate_state_cache()
                 message = f"cron requested: {job_id}"
                 redirect_with_message(self, next_location, message)
                 return
@@ -1144,7 +1614,48 @@ def build_handler(config: AppConfig):
                         "json",
                     ]
                 )
+                invalidate_command_cache()
+                invalidate_state_cache()
                 message = result["stdout"] or result["stderr"] or f"opportunity promoted: {opportunity_id}"
+                redirect_with_message(self, next_location, str(message))
+                return
+
+            if parsed.path == "/actions/update-task":
+                task_id = form.get("task_id", [""])[0]
+                if task_id == "":
+                    redirect_with_message(self, next_location, "missing task id")
+                    return
+                script_path = config.captain_workspace / "scripts/update_task_registry.py"
+                command = ["python3", str(script_path), "--path", str(config.registry_path), "--task-id", task_id]
+
+                state_value = form.get("state", [""])[0].strip()
+                owner_value = form.get("owner", [""])[0].strip()
+                priority_value = form.get("priority", [""])[0].strip()
+                next_step_value = form.get("next_step", [""])[0].strip()
+                blocker_value = form.get("blocker", [""])[0].strip()
+                note_value = form.get("note", [""])[0].strip()
+
+                if state_value:
+                    command.extend(["--state", state_value])
+                if owner_value:
+                    command.extend(["--owner", owner_value])
+                if priority_value:
+                    command.extend(["--priority", priority_value])
+                if next_step_value:
+                    command.extend(["--next-step", next_step_value])
+                if "clear_blocker" in form:
+                    command.append("--clear-blocker")
+                elif blocker_value:
+                    command.extend(["--blocker", blocker_value])
+                if note_value:
+                    command.extend(["--notes", note_value])
+
+                result = run_command(command)
+                if result["ok"]:
+                    run_command(config.refresh_dashboard_command())
+                invalidate_command_cache()
+                invalidate_state_cache()
+                message = result["stdout"] or result["stderr"] or f"task updated: {task_id}"
                 redirect_with_message(self, next_location, str(message))
                 return
 

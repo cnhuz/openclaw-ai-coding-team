@@ -15,6 +15,7 @@
 
 - 默认只绑定 `127.0.0.1`
 - 不引入额外 Web 框架，直接使用 Python 标准库
+- 对 `openclaw status` / `openclaw cron list` 做短 TTL 缓存，降低页面卡顿
 - `registry` 仍然是正式任务真相源
 - `dashboard` 仍然只是观察面
 - 当前提供两个安全操作：
@@ -27,6 +28,12 @@
   - 文件查看页
   - 任务 / 机会过滤
   - `ready_review` 机会手动晋升
+- 第三版已补：
+  - 任务时间线
+  - 基于 `update_task_registry.py` 的任务状态流转表单
+  - 任务详情页内联查看 handoff / exec log / evidence 演进
+  - 运行告警面板
+  - 全局事件流页面
 
 ## 启动
 
@@ -49,16 +56,28 @@ http://127.0.0.1:8765
 - `/cron`：cron 管理
 - `/logs`：最近执行日志
 - `/handoffs`：最近交接
+- `/events`：全局事件流
 - `/task?id=...`：任务详情
 - `/opportunity?id=...`：机会详情
 - `/file?path=...`：文件查看
+
+## 管理动作
+
+- 刷新 captain dashboard
+- 手动触发 cron
+- 手动晋升 `ready_review` 机会
+- 更新任务的 `state / owner / priority / next_step / blocker`
 
 ## API
 
 - `/api/summary`
 - `/api/tasks`
+- `/api/task?id=...`
 - `/api/opportunities`
+- `/api/opportunity?id=...`
 - `/api/agents`
+- `/api/events`
+- `/api/alerts`
 - `/api/cron`
 
 ## 注意

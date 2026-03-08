@@ -308,6 +308,8 @@
 - heartbeat / cron / dashboard
 - 本地 Web 控制台：`python3 apps/control_plane/server.py --openclaw-home ~/.openclaw --host 127.0.0.1 --port 8765`
 - 第二版控制台已支持任务/机会详情页、handoff 列表、文件查看、过滤和 `ready_review` 手动晋升
+- 第三版控制台已支持任务时间线与基于 `update_task_registry.py` 的任务状态流转
+- 第三版控制台现已补上运行告警与全局事件流，更直观看团队是否在推进主线
 - 任务真相源与 handoff
 - 本地 Git 初始化能力
 
