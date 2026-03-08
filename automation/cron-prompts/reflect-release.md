@@ -18,6 +18,7 @@
    - 读取 `reflection-intake/<task-id>.md`
    - 严格使用 packet 中的 `verification_report`、`release_note`、`knowledge_protocol`、`knowledge_template`
    - 不要自己再猜协议路径、模板路径或输出路径
+   - `captain_registry` 是状态真相源，`captain_dashboard` 只是观察面；若两者冲突，以 `captain_registry` 为准
 4. 生成 packet 指定的 `reflection_output`，至少包含：
    - 本次交付是否符合原 spec
    - 哪些步骤顺畅，哪些步骤仍靠人工补位
@@ -32,7 +33,9 @@
 7. 只有在校验通过后，才允许运行：
    - `python3 scripts/update_task_registry.py --path __OPENCLAW_HOME__/workspace-aic-captain/tasks/registry.json --task-id ... --state Closed --owner aic-curator --clear-blocker --next-step "评估 reflection 与知识提案，完成长期沉淀" --append-evidence <reflection_output> --append-evidence <proposal_output>`
 8. 再运行 `python3 scripts/create_handoff.py --task-id ... --current-stage Closed --goal "把已闭环任务交给 curator 做长期沉淀" --deliverable "Reflection + Knowledge Proposal" --evidence <reflection_output> --evidence <proposal_output> --from-owner aic-reflector --next-owner aic-curator --breakpoint "评估 proposal 是否应落盘为长期知识或流程改造" --handoff-dir __OPENCLAW_HOME__/workspace-aic-captain/handoffs --sync-registry --registry-path __OPENCLAW_HOME__/workspace-aic-captain/tasks/registry.json --sync-state Closed --sync-owner aic-curator --sync-next-step "评估 reflection 与知识提案，完成长期沉淀"`
-9. 将本轮结果写入 `data/exec-logs/reflect-release/`
+9. 关闭任务与写完 handoff 后，立刻刷新 captain 看板：
+   - `python3 scripts/refresh_dashboard.py --registry-path __OPENCLAW_HOME__/workspace-aic-captain/tasks/registry.json --handoffs-dir __OPENCLAW_HOME__/workspace-aic-captain/handoffs --exec-logs-dir __OPENCLAW_HOME__/workspace-aic-captain/data/exec-logs --sessions-root __OPENCLAW_HOME__/agents --research-root __OPENCLAW_HOME__/workspace-aic-researcher/data/research --skills-root __OPENCLAW_HOME__/workspace-aic-researcher/data/skills --output __OPENCLAW_HOME__/workspace-aic-captain/data/dashboard.md`
+10. 将本轮结果写入 `data/exec-logs/reflect-release/`
 
 规则：
 
@@ -40,4 +43,5 @@
 - 没有 release note 和 verification report，不允许关闭任务
 - 没有成功读取 packet 指定的 `knowledge_protocol` 与 `knowledge_template`，不允许关闭任务
 - `validate_reflection_closeout.py` 未通过，不允许关闭任务
+- 不把 dashboard 当状态裁决面；状态、owner、blocker、next step 只认 `captain_registry`
 - 执行日志必须包含：`- Status: ok`、`- decision: closed`、`- task_id: ...`、`- reflection: ...`

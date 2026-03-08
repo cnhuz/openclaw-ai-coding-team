@@ -15,5 +15,7 @@
 规则：
 
 - 这个 job 只负责刷新与暴露状态，不直接改 `tasks/registry.json`
+- `tasks/registry.json` 是任务状态真相源；若看板与 registry 冲突，以 registry 为准
+- 看板只负责观察与汇总，不承担状态裁决
 - 不把“看板已刷新”说成“任务已推进”
 - 无异常时给出简短结果即可

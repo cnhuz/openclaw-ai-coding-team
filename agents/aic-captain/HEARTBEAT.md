@@ -21,6 +21,8 @@
 
 规则：
 
+- `tasks/registry.json` 是正式任务真相源；`data/dashboard.md` 只是最近观察摘要
+- 若看板与 registry 冲突，以 registry 为准；必要时先刷新看板再继续
 - 不把聊天当推进；没有任务就先立项
 - 不把“已派发给 planner”说成“需求已收敛”
 - 若没有任何新需求、活跃任务和系统异常，保持安静

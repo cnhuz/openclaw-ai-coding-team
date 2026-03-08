@@ -37,6 +37,7 @@ def build_packet(
     reflection_output: str,
     proposal_output: str,
     captain_registry: str,
+    captain_dashboard: str,
     captain_handoffs: str,
 ) -> str:
     evidence = normalize_list(task.get("evidence_pointer"))
@@ -53,7 +54,13 @@ def build_packet(
         f"- latest_handoff: {latest_handoff or 'none'}",
         f"- repo_root: {execution_target['repo_root']}",
         f"- captain_registry: {captain_registry}",
+        f"- captain_dashboard: {captain_dashboard}",
         f"- captain_handoffs: {captain_handoffs}",
+        "",
+        "## Control Plane",
+        "- state_source: captain_registry",
+        "- dashboard_role: derived_observer",
+        "- conflict_rule: if captain_registry and captain_dashboard disagree, trust captain_registry and refresh dashboard after state changes",
         "",
         "## Required Inputs",
         f"- verification_report: {verification_report}",
@@ -110,6 +117,7 @@ def main() -> int:
     repo_root = Path(execution_target["repo_root"])
     knowledge_protocol = str((repo_root / "protocols/knowledge-pipeline.md").resolve())
     knowledge_template = str((repo_root / "templates/common/data/knowledge-proposals/TEMPLATE.json").resolve())
+    captain_dashboard = str((registry_path.parent.parent / "data/dashboard.md").resolve())
     tester_workspace = openclaw_home / "workspace-aic-tester"
     releaser_workspace = openclaw_home / "workspace-aic-releaser"
     reflector_workspace = openclaw_home / "workspace-aic-reflector"
@@ -141,6 +149,7 @@ def main() -> int:
                 reflection_output=reflection_output,
                 proposal_output=proposal_output,
                 captain_registry=str(registry_path.resolve()),
+                captain_dashboard=captain_dashboard,
                 captain_handoffs=str(handoffs_dir.resolve()),
             ),
             encoding="utf-8",

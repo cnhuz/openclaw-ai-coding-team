@@ -22,15 +22,15 @@ def read_text(path: Path) -> str:
 
 
 def extract_section(text: str, heading: str) -> str:
-    marker = f"## {heading}"
-    start = text.find(marker)
-    if start == -1:
+    marker = re.compile(rf"^## {re.escape(heading)}\s*$", re.MULTILINE)
+    match = marker.search(text)
+    if match is None:
         return ""
-    rest = text[start + len(marker) :]
-    next_heading = rest.find("\n## ")
-    if next_heading == -1:
+    rest = text[match.end() :]
+    next_heading = re.search(r"^## ", rest, re.MULTILINE)
+    if next_heading is None:
         return rest.strip()
-    return rest[:next_heading].strip()
+    return rest[: next_heading.start()].strip()
 
 
 def extract_packet_checks(packet_text: str) -> list[str]:

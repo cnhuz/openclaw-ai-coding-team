@@ -2,11 +2,15 @@
 
 > Auto-updated
 > Recommended generator: `python3 scripts/refresh_dashboard.py --registry-path tasks/registry.json --handoffs-dir handoffs --exec-logs-dir data/exec-logs --research-root data/research --skills-root data/skills --output data/dashboard.md`
+> Control plane: task state, owner, blocker, next step, and closeout truth come from `tasks/registry.json`
+> Dashboard role: derived observer; it may lag behind until refreshed
 
 ## Summary
 
 - task_registry:
 - task_registry_updated_at:
+- task_state_source:
+- dashboard_role:
 - team_entry_active:
 - workflow_started:
 - tasks_total:
