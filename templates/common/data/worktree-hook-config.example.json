@@ -1,0 +1,28 @@
+{
+  "setup": [
+    {
+      "name": "bootstrap-example",
+      "command": [
+        "python3",
+        "-c",
+        "from pathlib import Path; Path('bootstrap.marker').write_text('ok', encoding='utf-8')"
+      ]
+    }
+  ],
+  "cleanup": [
+    {
+      "name": "cleanup-example",
+      "command": [
+        "python3",
+        "-c",
+        "from pathlib import Path; Path('{{state_root}}/cleanup.marker').write_text('ok', encoding='utf-8')"
+      ]
+    }
+  ],
+  "env": {
+    "vars": {
+      "APP_PORT": "{{assigned_port}}",
+      "OPENCLAW_WORKTREE": "{{worktree_path}}"
+    }
+  }
+}

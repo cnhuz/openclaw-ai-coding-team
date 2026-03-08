@@ -68,6 +68,16 @@
 - 是否允许自动创建仓库
 - 是否允许自动 `push`
 
+## Browser / Skills
+
+若启用了持续探索与技能自治，建议显式记录：
+
+- 浏览器 profile 名称
+- 哪些站点已经登录，可用于 `browser` 探索
+- `data/skills/policy.json` 的真实路径
+- `data/skills/inventory.json` 的真实路径
+- `~/.openclaw/skills` 或其它 managed skills 目录
+
 ## Skill 源
 
 安装任何新 skill 前，必须先做审查。

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "target_id": "primary-repo",
+    "repo_root": "__PACKAGE_ROOT__",
+    "default_branch": "main",
+    "build_entrypoint": "",
+    "test_commands": [
+      "python3 -m py_compile automation/scripts/*.py",
+      "python3 automation/scripts/verify_worktree_lifecycle.py",
+      "bash -n setup/install-openclaw-team.sh",
+      "bash -n setup/install-openclaw-automation.sh"
+    ],
+    "release_mode": "repo_only",
+    "release_command": "",
+    "rollback_command": "git revert <commit>",
+    "observe_checks": [
+      "确认 captain dashboard 与 tasks/registry.json 没有新增 blocker",
+      "确认关键 shell 与 python 校验仍可通过",
+      "确认 handoff、spec、verification 与 release 产物链条完整"
+    ]
+  }
+}

@@ -112,6 +112,7 @@ HOOKS_SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.hooks.snippet.json"
 MEMORY_SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.memory.qmd.snippet.json"
 DAILY_TEMPLATE_PATH="$COMMON_ROOT/memory/daily/TEMPLATE.md"
 QMD_PRIMER_PATH="$SCRIPT_DIR/prime_qmd_memory.py"
+MERGE_DEFAULTS_PATH="$SCRIPT_DIR/merge_runtime_defaults.py"
 
 ensure_dir() {
   local path="$1"
@@ -135,7 +136,7 @@ preserve_runtime_state() {
   local workspace_path="$1"
   local stash_dir="$2"
   local rel_path
-  for rel_path in MEMORY.md memory tasks data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/research handoffs; do
+  for rel_path in MEMORY.md memory tasks data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/execution-target.json data/research data/skills handoffs; do
     if [[ ! -e "$workspace_path/$rel_path" ]]; then
       continue
     fi
@@ -148,7 +149,7 @@ restore_runtime_state() {
   local workspace_path="$1"
   local stash_dir="$2"
   local rel_path
-  for rel_path in MEMORY.md memory tasks data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/research handoffs; do
+  for rel_path in MEMORY.md memory tasks data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/execution-target.json data/research data/skills handoffs; do
     if [[ ! -e "$stash_dir/$rel_path" ]]; then
       continue
     fi
@@ -170,9 +171,82 @@ remove_runtime_bootstrap() {
 ensure_core_exec_log_dirs() {
   local workspace_path="$1"
   local job_name
-  for job_name in dashboard-refresh ambient-discovery signal-triage opportunity-deep-dive opportunity-promotion exploration-learning research-sprint build-sprint daily-reflection daily-curation daily-backup memory-hourly memory-weekly; do
+  for job_name in dashboard-refresh ambient-discovery signal-triage opportunity-deep-dive opportunity-promotion exploration-learning planner-intake reviewer-gate dispatch-approved tester-gate releaser-gate reflect-release skill-scout skill-maintenance research-sprint build-sprint daily-reflection daily-curation daily-backup memory-hourly memory-weekly; do
     ensure_dir "$workspace_path/data/exec-logs/$job_name"
   done
+}
+
+ensure_runtime_defaults() {
+  local workspace_path="$1"
+  local rel_path
+  for rel_path in data/execution-target.json data/research/site_profiles.json data/research/tool_profiles.json data/skills/README.md data/skills/policy.json data/skills/dependency_policy.json data/skills/catalog.json; do
+    if [[ -e "$workspace_path/$rel_path" || ! -e "$COMMON_ROOT/$rel_path" ]]; then
+      continue
+    fi
+    ensure_dir "$(dirname "$workspace_path/$rel_path")"
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+      cp -a "$COMMON_ROOT/$rel_path" "$workspace_path/$rel_path"
+    fi
+  done
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    python3 "$MERGE_DEFAULTS_PATH" --workspace "$workspace_path" --common-root "$COMMON_ROOT" >/dev/null
+  fi
+}
+
+render_execution_target() {
+  local workspace_path="$1"
+  local template_path="$COMMON_ROOT/data/execution-target.json"
+  local target_path="$workspace_path/data/execution-target.json"
+  if [[ ! -f "$template_path" || "$DRY_RUN" -eq 1 ]]; then
+    return
+  fi
+  python3 - "$template_path" "$target_path" "$PACKAGE_ROOT" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+template_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
+package_root = sys.argv[3]
+
+template = json.loads(template_path.read_text(encoding="utf-8"))
+if target_path.exists():
+    target = json.loads(target_path.read_text(encoding="utf-8"))
+else:
+    target = template
+
+if not isinstance(target, dict):
+    target = template
+if not isinstance(template, dict):
+    raise SystemExit("execution target template must be an object")
+
+def deep_fill(dst, src):
+    for key, value in src.items():
+        if key not in dst:
+            dst[key] = value
+            continue
+        current = dst[key]
+        if isinstance(current, dict) and isinstance(value, dict):
+            deep_fill(current, value)
+            continue
+        if isinstance(current, list) and isinstance(value, list):
+            for item in value:
+                if item not in current:
+                    current.append(item)
+
+deep_fill(target, template)
+target_obj = target.setdefault("target", {})
+if target_obj.get("repo_root") in {None, "", "__PACKAGE_ROOT__"}:
+    target_obj["repo_root"] = package_root
+if target_obj.get("build_entrypoint") is None:
+    target_obj["build_entrypoint"] = ""
+if target_obj.get("release_command") is None:
+    target_obj["release_command"] = ""
+if target_obj.get("rollback_command") is None:
+    target_obj["rollback_command"] = "git revert <commit>"
+target_path.parent.mkdir(parents=True, exist_ok=True)
+target_path.write_text(json.dumps(target, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
 }
 
 append_if_missing() {
@@ -212,7 +286,7 @@ ensure_today_daily_log() {
 update_tools_runtime_section() {
   local tools_path="$1"
   local block
-  block=$'## Installed Runtime Paths\n\n- `scripts/scan_sessions_incremental.py`: enabled\n- `scripts/lockfile.py`: enabled\n- `scripts/weekly_gate.py`: enabled\n- `scripts/git_backup_health.py`: enabled\n- `scripts/validate_task_registry.py`: enabled\n- `scripts/query_task_registry.py`: enabled\n- `scripts/update_task_registry.py`: enabled\n- `scripts/create_handoff.py`: enabled\n- `scripts/refresh_dashboard.py`: enabled\n- `scripts/prepare_exploration_batch.py`: enabled\n- `scripts/record_research_signal.py`: enabled\n- `scripts/triage_research_signals.py`: enabled\n- `scripts/query_research_opportunities.py`: enabled\n- `scripts/promote_research_opportunity.py`: enabled\n- `scripts/exploration_learning.py`: enabled\n- `AGENTS.md`: merged common + role rules\n- `BOOT.md`: optional `boot-md` startup checklist'
+  block=$'## Installed Runtime Paths\n\n- `scripts/scan_sessions_incremental.py`: enabled\n- `scripts/lockfile.py`: enabled\n- `scripts/weekly_gate.py`: enabled\n- `scripts/git_backup_health.py`: enabled\n- `scripts/validate_task_registry.py`: enabled\n- `scripts/query_task_registry.py`: enabled\n- `scripts/update_task_registry.py`: enabled\n- `scripts/create_handoff.py`: enabled\n- `scripts/refresh_dashboard.py`: enabled\n- `scripts/execution_target.py`: enabled\n- `scripts/worktree_lifecycle.py`: enabled\n- `scripts/verify_worktree_lifecycle.py`: enabled\n- `scripts/prepare_exploration_batch.py`: enabled\n- `scripts/prepare_site_frontier.py`: enabled\n- `scripts/prepare_planner_intake.py`: enabled\n- `scripts/prepare_builder_intake.py`: enabled\n- `scripts/prepare_tester_intake.py`: enabled\n- `scripts/prepare_releaser_intake.py`: enabled\n- `scripts/record_research_signal.py`: enabled\n- `scripts/triage_research_signals.py`: enabled\n- `scripts/query_research_opportunities.py`: enabled\n- `scripts/promote_research_opportunity.py`: enabled\n- `scripts/bridge_ready_review_opportunity.py`: enabled\n- `scripts/bridge_approved_task.py`: enabled\n- `scripts/exploration_learning.py`: enabled\n- `scripts/upsert_site_profile.py`: enabled\n- `scripts/plan_tool_route.py`: enabled\n- `scripts/record_tool_attempt.py`: enabled\n- `scripts/tool_route_learning.py`: enabled\n- `scripts/sync_skill_inventory.py`: enabled\n- `scripts/register_skill_candidate.py`: enabled\n- `scripts/query_skill_catalog.py`: enabled\n- `scripts/bootstrap_skill_dependency.py`: enabled\n- `scripts/install_skill_candidate.py`: enabled\n- `AGENTS.md`: merged common + role rules\n- `BOOT.md`: optional `boot-md` startup checklist'
   append_if_missing "$tools_path" "$block"
 }
 
@@ -475,6 +549,8 @@ while IFS= read -r -d '' agent_dir; do
     restore_runtime_state "$workspace_path" "$state_stash_dir"
     rm -rf "$state_stash_dir"
   fi
+  ensure_runtime_defaults "$workspace_path"
+  render_execution_target "$workspace_path"
   remove_runtime_bootstrap "$workspace_path"
   ensure_core_exec_log_dirs "$workspace_path"
 

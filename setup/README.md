@@ -6,6 +6,7 @@
 
 - 预先需要准备的环境
 - `OpenClaw` / `git` / `gh` / 渠道 / GitHub 策略等前置条件
+- 真实执行目标 `data/execution-target.json` 应如何配置
 - 最少可运行 vs 完整自治的差异
 
 请优先看根文档：
@@ -25,6 +26,7 @@
 - 合并 `config/openclaw.agents.snippet.json` 与 `config/openclaw.hooks.snippet.json` 到真实 `openclaw.json`
 - 合并 `config/openclaw.memory.qmd.snippet.json`，把记忆后端切到 `qmd`
 - 初始化结构化任务真相源 `tasks/registry.json`
+- 初始化 `data/execution-target.json`，让 builder / tester / releaser 知道真正的代码仓库目标
 - 复制运行态 `scripts/`
 - 可选地为每个 workspace 初始化本地 Git 仓库
 - 默认为每个 agent 预热 qmd collection，并执行一次 `qmd update`

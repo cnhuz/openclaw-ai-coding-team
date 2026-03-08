@@ -71,20 +71,30 @@
 - `signal-triage`：对 signals 去重、聚类、打分，形成机会池
 - `opportunity-deep-dive`：对高分机会补证据、固化 Opportunity Card
 - `opportunity-promotion`：把成熟机会晋升为正式任务
+- `exploration-learning`：让探索系统自己学习更好的 query、来源、权重和工具路线
+- `prepare-site-frontier`：把站点画像转成热门入口、Feed 和高价值前沿
+- `skill-scout`：从能力缺口里发现更合适的 skill 候选
+- `skill-maintenance`：按 policy 自动安装可信低风险 skill
 
 运行态数据位于：
 
 - `data/research/sources.json`
+- `data/research/site_profiles.json`
+- `data/research/tool_profiles.json`
+- `data/research/tool_attempts/`
 - `data/research/topic_profiles.json`
 - `data/research/source_scores.json`
 - `data/research/opportunities.json`
 - `data/research/signals/`
 - `data/research/opportunity-cards/`
+- `data/skills/policy.json`
+- `data/skills/catalog.json`
 
 这条链和 `tasks/registry.json` 分离：
 
 - `data/research/` 负责探索期弱信号和机会池
 - `tasks/registry.json` 只负责正式交付任务
+- `site_profiles.json` + `tool_attempts/` 会驱动“热门入口优先、失败后自动换工具、再把经验学回去”的探索回路
 
 ## 预先准备的环境
 
@@ -100,6 +110,8 @@
 | `python3` | 运行 helper scripts | `tasks`、`handoff`、`dashboard`、记忆自动化都依赖 Python 脚本 |
 | `git` | 本地备份与版本基线 | `daily-backup`、首跑基线、回滚与追踪都依赖它 |
 | `qmd` | Agent 级本地记忆检索 | 这套 coding team 现在默认按 `memory.backend = "qmd"` 接入每个 agent 的本地 Markdown 记忆 |
+| `Chrome/Chromium` | Browser 工具探索与登录态站点 | 若希望探索 `X`、强 JS 页面、热门流和评论区，推荐准备可用浏览器 |
+| `node` / `npx` | skill 自动安装与 ClawHub | `skill-maintenance` 默认通过 `npx clawhub` 安装可信低风险 skill |
 | 可写的 `~/.openclaw/` | 运行时目录 | 安装器会创建 `workspace-aic-*`、`agents/*`、`openclaw.json` 备份 |
 
 ### 推荐项
@@ -208,6 +220,38 @@
 默认模板在：
 
 - `templates/common/data/github-backup-policy.json`
+
+### 4. 真实执行目标配置
+
+如果你希望 `aic-builder / aic-tester / aic-releaser` 真正对某个代码仓库工作，而不是只在各自运行态 workspace 里空转，还需要准备：
+
+- `data/execution-target.json`
+
+默认模板在：
+
+- `templates/common/data/execution-target.json`
+
+关键字段：
+
+- `target.repo_root`：真实代码仓库根目录
+- `target.default_branch`：默认分支
+- `target.test_commands`：tester 优先执行的校验命令
+- `target.release_mode`：`repo_only` 或 `command`
+- `target.release_command`：若使用命令式发布，在这里声明
+- `target.rollback_command`：回滚命令
+- `target.observe_checks`：发布后观察项
+
+如果这份配置缺失，前半段研究/规划仍能运行，但 `开发软件 -> 测试验证 -> 部署上线 -> 复盘沉淀` 这条后半段不会真正闭环。
+
+如果你的目标仓库需要自定义 worktree setup / cleanup，可显式提供 hook 配置；示例模板在：
+
+- `templates/common/data/worktree-hook-config.example.json`
+
+这类 hook 必须是显式声明、可关闭、可审计的，不能依赖来源不明的隐式脚本。
+
+当前仓库也内置了最小烟测命令：
+
+- `python3 automation/scripts/verify_worktree_lifecycle.py`
 
 关键字段：
 

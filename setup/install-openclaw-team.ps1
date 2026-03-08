@@ -56,7 +56,7 @@ function Preserve-RuntimeState {
         [string]$WorkspacePath,
         [string]$StashPath
     )
-    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/research", "handoffs")) {
+    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "handoffs")) {
         $sourcePath = Join-Path $WorkspacePath $relativePath
         if (-not (Test-Path $sourcePath)) {
             continue
@@ -72,7 +72,7 @@ function Restore-RuntimeState {
         [string]$WorkspacePath,
         [string]$StashPath
     )
-    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/research", "handoffs")) {
+    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "handoffs")) {
         $sourcePath = Join-Path $StashPath $relativePath
         if (-not (Test-Path $sourcePath)) {
             continue
@@ -96,9 +96,85 @@ function Remove-RuntimeBootstrap {
 
 function Ensure-CoreExecLogDirs {
     param([string]$WorkspacePath)
-    foreach ($jobName in @("dashboard-refresh", "ambient-discovery", "signal-triage", "opportunity-deep-dive", "opportunity-promotion", "exploration-learning", "research-sprint", "build-sprint", "daily-reflection", "daily-curation", "daily-backup", "memory-hourly", "memory-weekly")) {
+    foreach ($jobName in @("dashboard-refresh", "ambient-discovery", "signal-triage", "opportunity-deep-dive", "opportunity-promotion", "exploration-learning", "planner-intake", "reviewer-gate", "dispatch-approved", "tester-gate", "releaser-gate", "reflect-release", "skill-scout", "skill-maintenance", "research-sprint", "build-sprint", "daily-reflection", "daily-curation", "daily-backup", "memory-hourly", "memory-weekly")) {
         Ensure-Directory -Path (Join-Path $WorkspacePath ("data/exec-logs/{0}" -f $jobName))
     }
+}
+
+function Ensure-RuntimeDefaults {
+    param(
+        [string]$WorkspacePath,
+        [string]$CommonRoot
+    )
+    foreach ($relativePath in @("data/execution-target.json", "data/research/site_profiles.json", "data/research/tool_profiles.json", "data/skills/README.md", "data/skills/policy.json", "data/skills/dependency_policy.json", "data/skills/catalog.json")) {
+        $targetPath = Join-Path $WorkspacePath $relativePath
+        $sourcePath = Join-Path $CommonRoot $relativePath
+        if ((Test-Path $targetPath) -or -not (Test-Path $sourcePath)) {
+            continue
+        }
+        Ensure-Directory -Path (Split-Path -Parent $targetPath)
+        if (-not $DryRun) {
+            Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
+        }
+    }
+    if (-not $DryRun) {
+        $pythonCommand = Get-PythonCommand
+        if ($pythonCommand) {
+            & $pythonCommand (Join-Path $scriptRoot "merge_runtime_defaults.py") --workspace $WorkspacePath --common-root $CommonRoot | Out-Null
+        }
+    }
+}
+
+function Render-ExecutionTarget {
+    param(
+        [string]$WorkspacePath,
+        [string]$CommonRoot,
+        [string]$PackageRoot
+    )
+    if ($DryRun) {
+        return
+    }
+    $templatePath = Join-Path $CommonRoot "data/execution-target.json"
+    if (-not (Test-Path $templatePath)) {
+        return
+    }
+    $targetPath = Join-Path $WorkspacePath "data/execution-target.json"
+    $template = Get-Content -Path $templatePath -Raw | ConvertFrom-Json
+    $payload = if (Test-Path $targetPath) {
+        Get-Content -Path $targetPath -Raw | ConvertFrom-Json
+    } else {
+        Clone-JsonObject -Value $template
+    }
+    if (-not $payload.PSObject.Properties["target"]) {
+        $payload | Add-Member -NotePropertyName "target" -NotePropertyValue ([pscustomobject]@{})
+    }
+    $target = $payload.target
+    foreach ($prop in $template.target.PSObject.Properties) {
+        if (-not $target.PSObject.Properties[$prop.Name]) {
+            $target | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value
+            continue
+        }
+        if ($target.($prop.Name) -is [System.Collections.IEnumerable] -and -not ($target.($prop.Name) -is [string]) -and $prop.Value -is [System.Collections.IEnumerable] -and -not ($prop.Value -is [string])) {
+            $currentItems = @($target.($prop.Name))
+            $merged = New-Object System.Collections.ArrayList
+            foreach ($item in $currentItems) {
+                [void]$merged.Add($item)
+            }
+            foreach ($item in @($prop.Value)) {
+                if ($merged -notcontains $item) {
+                    [void]$merged.Add($item)
+                }
+            }
+            $target.($prop.Name) = @($merged.ToArray())
+        }
+    }
+    if (-not $target.repo_root -or $target.repo_root -eq "__PACKAGE_ROOT__") {
+        $target.repo_root = $PackageRoot
+    }
+    if ($null -eq $target.build_entrypoint) { $target.build_entrypoint = "" }
+    if ($null -eq $target.release_command) { $target.release_command = "" }
+    if ($null -eq $target.rollback_command) { $target.rollback_command = "git revert <commit>" }
+    Set-Content -Path $targetPath -Value ($payload | ConvertTo-Json -Depth 30) -Encoding UTF8
 }
 
 function Get-PythonCommand {
@@ -171,12 +247,31 @@ function Update-ToolsRuntimeSection {
         "- `scripts/update_task_registry.py`：enabled",
         "- `scripts/create_handoff.py`：enabled",
         "- `scripts/refresh_dashboard.py`：enabled",
+        "- `scripts/execution_target.py`：enabled",
+        "- `scripts/verify_worktree_lifecycle.py`：enabled",
         "- `scripts/prepare_exploration_batch.py`：enabled",
+        "- `scripts/prepare_site_frontier.py`：enabled",
+        "- `scripts/prepare_planner_intake.py`：enabled",
+        "- `scripts/prepare_builder_intake.py`：enabled",
+        "- `scripts/prepare_tester_intake.py`：enabled",
+        "- `scripts/prepare_releaser_intake.py`：enabled",
         "- `scripts/record_research_signal.py`：enabled",
         "- `scripts/triage_research_signals.py`：enabled",
         "- `scripts/query_research_opportunities.py`：enabled",
         "- `scripts/promote_research_opportunity.py`：enabled",
+        "- `scripts/bridge_ready_review_opportunity.py`：enabled",
+        "- `scripts/bridge_approved_task.py`：enabled",
         "- `scripts/exploration_learning.py`：enabled",
+        "- `scripts/upsert_site_profile.py`：enabled",
+        "- `scripts/plan_tool_route.py`：enabled",
+        "- `scripts/record_tool_attempt.py`：enabled",
+        "- `scripts/tool_route_learning.py`：enabled",
+        "- `scripts/sync_skill_inventory.py`：enabled",
+        "- `scripts/register_skill_candidate.py`：enabled",
+        "- `scripts/query_skill_catalog.py`：enabled",
+        "- `scripts/bootstrap_skill_dependency.py`：enabled",
+        "- `scripts/install_skill_candidate.py`：enabled",
+        "- `scripts/worktree_lifecycle.py`：enabled",
         "- `AGENTS.md`：merged common + role rules",
         "- `BOOT.md`：optional `boot-md` startup checklist"
     ) -join "`r`n"
@@ -537,6 +632,8 @@ foreach ($agentDirectory in $agentDirectories) {
         Restore-RuntimeState -WorkspacePath $workspacePath -StashPath $stateStashPath
         Remove-Item -Path $stateStashPath -Recurse -Force
     }
+    Ensure-RuntimeDefaults -WorkspacePath $workspacePath -CommonRoot $commonRoot
+    Render-ExecutionTarget -WorkspacePath $workspacePath -CommonRoot $commonRoot -PackageRoot $packageRoot
     Remove-RuntimeBootstrap -WorkspacePath $workspacePath
     Ensure-CoreExecLogDirs -WorkspacePath $workspacePath
 
