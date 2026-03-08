@@ -99,6 +99,7 @@
 | `OpenClaw` | Agent 运行时 | 必须已经安装并能正常连接 gateway |
 | `python3` | 运行 helper scripts | `tasks`、`handoff`、`dashboard`、记忆自动化都依赖 Python 脚本 |
 | `git` | 本地备份与版本基线 | `daily-backup`、首跑基线、回滚与追踪都依赖它 |
+| `qmd` | Agent 级本地记忆检索 | 这套 coding team 现在默认按 `memory.backend = "qmd"` 接入每个 agent 的本地 Markdown 记忆 |
 | 可写的 `~/.openclaw/` | 运行时目录 | 安装器会创建 `workspace-aic-*`、`agents/*`、`openclaw.json` 备份 |
 
 ### 推荐项
@@ -109,6 +110,33 @@
 | 已登录的 `gh auth` | GitHub 建仓与推送 | 若未登录，GitHub 相关能力只能做到本地 Git，不会自动建远程仓库 |
 | 稳定外网 | GitHub / 渠道 / 研究 | `gh repo create`、`push`、Telegram 探测、在线研究都需要网络 |
 | Telegram / 其他渠道账号 | 对外入口 | 若要让 `aic-captain` 真正收消息，需先准备 channel account 与 token |
+
+### QMD 记忆说明
+
+安装器现在会为每个 agent 自动完成以下动作：
+
+- 合并 `memory.backend = "qmd"` 到 `openclaw.json`
+- 为每个 agent 预置独立的 QMD XDG 状态目录：
+  - `~/.openclaw/agents/<agent-id>/qmd/xdg-config`
+  - `~/.openclaw/agents/<agent-id>/qmd/xdg-cache`
+- 为每个 agent 的 workspace 预热这些 collection：
+  - `memory-root-<agent>`
+  - `memory-alt-<agent>`
+  - `memory-dir-<agent>`
+  - `handoffs-<agent>`
+  - `research-cards-<agent>`
+  - `dashboard-<agent>`
+- 默认执行：
+  - `qmd collection add ...`
+  - `qmd update`
+  - `qmd status`
+- 若显式启用安装参数 `--qmd-embed`，还会在初始化时额外执行 `qmd embed`
+
+默认检索模式是 `memory.qmd.searchMode = "search"`，也就是 **BM25 优先**。  
+这意味着：
+
+- 不跑 `qmd embed` 也能先用
+- 若后续希望更强语义检索，可以再执行一次带 `--qmd-embed` 的安装，或手工对指定 agent 预热 embed
 
 ### 当前支持建议
 

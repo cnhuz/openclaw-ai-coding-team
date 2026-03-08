@@ -9,6 +9,8 @@ SKIP_GIT_INIT=0
 SKIP_CONFIG_MERGE=0
 SKIP_AUTOMATION=0
 SKIP_IGNITE=0
+SKIP_QMD_INIT=0
+QMD_EMBED=0
 DRY_RUN=0
 AUTOMATION_TIMEZONE="Asia/Shanghai"
 
@@ -26,6 +28,8 @@ Options:
   --skip-config-merge          Skip openclaw.json merge
   --skip-automation            Skip cron install and control-loop ignition
   --skip-ignite                Install automation but skip final system event
+  --skip-qmd-init              Skip per-agent qmd memory priming
+  --qmd-embed                  Run qmd embed during install priming
   --automation-timezone <iana> Timezone for installed cron jobs
   --dry-run                    Print result without writing files
   -h, --help                   Show this help
@@ -66,6 +70,14 @@ while [[ $# -gt 0 ]]; do
       SKIP_IGNITE=1
       shift
       ;;
+    --skip-qmd-init)
+      SKIP_QMD_INIT=1
+      shift
+      ;;
+    --qmd-embed)
+      QMD_EMBED=1
+      shift
+      ;;
     --automation-timezone)
       AUTOMATION_TIMEZONE="$2"
       shift 2
@@ -97,7 +109,9 @@ AGENTS_ROOT="$PACKAGE_ROOT/agents"
 RUNTIME_SCRIPTS_ROOT="$PACKAGE_ROOT/automation/scripts"
 SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.agents.snippet.json"
 HOOKS_SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.hooks.snippet.json"
+MEMORY_SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.memory.qmd.snippet.json"
 DAILY_TEMPLATE_PATH="$COMMON_ROOT/memory/daily/TEMPLATE.md"
+QMD_PRIMER_PATH="$SCRIPT_DIR/prime_qmd_memory.py"
 
 ensure_dir() {
   local path="$1"
@@ -279,8 +293,9 @@ merge_openclaw_config() {
   local resolved_openclaw_home="$2"
   local snippet_path="$3"
   local hooks_snippet_path="$4"
-  local channel="$5"
-  local account_id="$6"
+  local memory_snippet_path="$5"
+  local channel="$6"
+  local account_id="$7"
 
   if [[ "$DRY_RUN" -eq 0 && -f "$target_config_path" ]]; then
     cp "$target_config_path" "$target_config_path.$(date +%Y%m%d-%H%M%S).bak"
@@ -290,6 +305,7 @@ merge_openclaw_config() {
   OPENCLAW_HOME_RESOLVED="$resolved_openclaw_home" \
   OPENCLAW_SNIPPET_PATH="$snippet_path" \
   OPENCLAW_HOOKS_SNIPPET_PATH="$hooks_snippet_path" \
+  OPENCLAW_MEMORY_SNIPPET_PATH="$memory_snippet_path" \
   OPENCLAW_CAPTAIN_CHANNEL="$channel" \
   OPENCLAW_CAPTAIN_ACCOUNT_ID="$account_id" \
   OPENCLAW_DRY_RUN="$DRY_RUN" \
@@ -301,6 +317,7 @@ from pathlib import Path
 target_config_path = Path(os.environ["OPENCLAW_TARGET_CONFIG"])
 snippet_path = Path(os.environ["OPENCLAW_SNIPPET_PATH"])
 hooks_snippet_path = Path(os.environ["OPENCLAW_HOOKS_SNIPPET_PATH"])
+memory_snippet_path = Path(os.environ["OPENCLAW_MEMORY_SNIPPET_PATH"])
 openclaw_home = os.environ["OPENCLAW_HOME_RESOLVED"]
 channel = os.environ.get("OPENCLAW_CAPTAIN_CHANNEL", "")
 account_id = os.environ.get("OPENCLAW_CAPTAIN_ACCOUNT_ID", "")
@@ -308,10 +325,19 @@ dry_run = os.environ.get("OPENCLAW_DRY_RUN", "0") == "1"
 
 snippet = json.loads(snippet_path.read_text(encoding="utf-8"))
 hooks_snippet = json.loads(hooks_snippet_path.read_text(encoding="utf-8")) if hooks_snippet_path.exists() else {}
+memory_snippet = json.loads(memory_snippet_path.read_text(encoding="utf-8")) if memory_snippet_path.exists() else {}
 if target_config_path.exists():
     config = json.loads(target_config_path.read_text(encoding="utf-8"))
 else:
     config = {}
+
+def deep_merge(target, source):
+    for key, value in source.items():
+        existing = target.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            deep_merge(existing, value)
+        else:
+            target[key] = value
 
 agents = config.setdefault("agents", {})
 defaults = agents.setdefault("defaults", {})
@@ -357,6 +383,14 @@ if channel and account_id:
         bindings.append(new_binding)
     config["bindings"] = bindings
 
+memory_root = memory_snippet.get("memory")
+if isinstance(memory_root, dict):
+    existing_memory = config.get("memory")
+    if not isinstance(existing_memory, dict):
+        existing_memory = {}
+    deep_merge(existing_memory, memory_root)
+    config["memory"] = existing_memory
+
 hook_root = hooks_snippet.get("hooks", {})
 if hook_root:
     config_hooks = config.setdefault("hooks", {})
@@ -388,6 +422,32 @@ if not dry_run:
         encoding="utf-8",
     )
 PY
+}
+
+prime_qmd_memory() {
+  local agent_id="$1"
+  local workspace_path="$2"
+  local runtime_agent_dir="$3"
+  if [[ "$SKIP_QMD_INIT" -eq 1 ]]; then
+    return
+  fi
+  if ! command -v qmd >/dev/null 2>&1; then
+    echo "WARN: qmd not found; qmd memory priming skipped for $agent_id" >&2
+    return
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    local dry_run_cmd=(python3 "$QMD_PRIMER_PATH" --agent-id "$agent_id" --workspace "$workspace_path" --agent-dir "$runtime_agent_dir" --dry-run)
+    if [[ "$QMD_EMBED" -eq 1 ]]; then
+      dry_run_cmd+=(--embed)
+    fi
+    "${dry_run_cmd[@]}" >/dev/null
+    return
+  fi
+  local cmd=(python3 "$QMD_PRIMER_PATH" --agent-id "$agent_id" --workspace "$workspace_path" --agent-dir "$runtime_agent_dir")
+  if [[ "$QMD_EMBED" -eq 1 ]]; then
+    cmd+=(--embed)
+  fi
+  "${cmd[@]}" >/dev/null
 }
 
 ensure_dir "$OPENCLAW_HOME"
@@ -435,12 +495,13 @@ while IFS= read -r -d '' agent_dir; do
   merge_memory_seed "$workspace_path"
   update_tools_runtime_section "$workspace_path/TOOLS.md"
   ensure_git_repo "$workspace_path" "chore: bootstrap $agent_id workspace"
+  prime_qmd_memory "$agent_id" "$workspace_path" "$runtime_agent_dir"
 
   created_workspaces+=("$agent_id -> $workspace_path")
 done < <(find "$AGENTS_ROOT" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 
 if [[ "$SKIP_CONFIG_MERGE" -eq 0 ]]; then
-  merge_openclaw_config "$CONFIG_PATH" "$OPENCLAW_HOME" "$SNIPPET_PATH" "$HOOKS_SNIPPET_PATH" "$CAPTAIN_CHANNEL" "$CAPTAIN_ACCOUNT_ID"
+  merge_openclaw_config "$CONFIG_PATH" "$OPENCLAW_HOME" "$SNIPPET_PATH" "$HOOKS_SNIPPET_PATH" "$MEMORY_SNIPPET_PATH" "$CAPTAIN_CHANNEL" "$CAPTAIN_ACCOUNT_ID"
 fi
 
 automation_status="skipped"
@@ -482,6 +543,13 @@ fi
 echo "- automation: $automation_status"
 if [[ "$SKIP_GIT_INIT" -eq 1 ]]; then
   echo "- workspace Git init skipped"
+fi
+if [[ "$SKIP_QMD_INIT" -eq 1 ]]; then
+  echo "- qmd memory priming skipped"
+elif [[ "$QMD_EMBED" -eq 1 ]]; then
+  echo "- qmd memory primed with embed"
+else
+  echo "- qmd memory primed (BM25/update only)"
 fi
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "- dry-run mode: no files were written"

@@ -1,0 +1,57 @@
+{
+  "memory": {
+    "backend": "qmd",
+    "citations": "auto",
+    "qmd": {
+      "searchMode": "search",
+      "includeDefaultMemory": true,
+      "paths": [
+        {
+          "name": "handoffs",
+          "path": "handoffs",
+          "pattern": "**/*.md"
+        },
+        {
+          "name": "research-cards",
+          "path": "data/research/opportunity-cards",
+          "pattern": "**/*.md"
+        },
+        {
+          "name": "dashboard",
+          "path": "data",
+          "pattern": "dashboard.md"
+        }
+      ],
+      "sessions": {
+        "enabled": true,
+        "retentionDays": 14
+      },
+      "update": {
+        "interval": "5m",
+        "onBoot": true,
+        "waitForBootSync": false,
+        "embedInterval": "24h",
+        "commandTimeoutMs": 120000,
+        "updateTimeoutMs": 300000,
+        "embedTimeoutMs": 1800000
+      },
+      "limits": {
+        "maxResults": 6,
+        "maxSnippetChars": 1200,
+        "maxInjectedChars": 4000,
+        "timeoutMs": 4000
+      },
+      "scope": {
+        "default": "deny",
+        "rules": [
+          {
+            "action": "allow",
+            "match": {
+              "chatType": "direct"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

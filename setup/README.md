@@ -23,9 +23,11 @@
 - 复制公共模板与角色文件
 - 将角色专属 `AGENTS.md` 合并进运行态根 `AGENTS.md`
 - 合并 `config/openclaw.agents.snippet.json` 与 `config/openclaw.hooks.snippet.json` 到真实 `openclaw.json`
+- 合并 `config/openclaw.memory.qmd.snippet.json`，把记忆后端切到 `qmd`
 - 初始化结构化任务真相源 `tasks/registry.json`
 - 复制运行态 `scripts/`
 - 可选地为每个 workspace 初始化本地 Git 仓库
+- 默认为每个 agent 预热 qmd collection，并执行一次 `qmd update`
 - 默认安装核心自动化 cron，并触发一次闭环点火
 - 支持 Ubuntu / Linux 环境直接装配
 
@@ -33,6 +35,11 @@
 
 - `install-openclaw-automation.ps1`
 - `install-openclaw-automation.sh`
+
+与 qmd 相关的安装参数：
+
+- `--skip-qmd-init`：跳过 qmd 预热
+- `--qmd-embed`：安装阶段顺带跑一次 `qmd embed`
 
 建议理解方式：
 

@@ -8,6 +8,8 @@ param(
     [switch]$SkipConfigMerge,
     [switch]$SkipAutomation,
     [switch]$SkipIgnite,
+    [switch]$SkipQmdInit,
+    [switch]$QmdEmbed,
     [string]$AutomationTimezone = "Asia/Shanghai",
     [switch]$DryRun
 )
@@ -97,6 +99,18 @@ function Ensure-CoreExecLogDirs {
     foreach ($jobName in @("dashboard-refresh", "ambient-discovery", "signal-triage", "opportunity-deep-dive", "opportunity-promotion", "exploration-learning", "research-sprint", "build-sprint", "daily-reflection", "daily-curation", "daily-backup", "memory-hourly", "memory-weekly")) {
         Ensure-Directory -Path (Join-Path $WorkspacePath ("data/exec-logs/{0}" -f $jobName))
     }
+}
+
+function Get-PythonCommand {
+    $python = Get-Command python3 -ErrorAction SilentlyContinue
+    if ($python) {
+        return $python.Source
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($python) {
+        return $python.Source
+    }
+    return $null
 }
 
 function Append-IfMissing {
@@ -286,12 +300,18 @@ function Merge-OpenClawConfig {
         [string]$ResolvedOpenClawHome,
         [string]$SnippetPath,
         [string]$HooksSnippetPath,
+        [string]$MemorySnippetPath,
         [string]$Channel,
         [string]$AccountId
     )
     $snippet = Get-Content -Path $SnippetPath -Raw | ConvertFrom-Json
     $hooksSnippet = if (Test-Path $HooksSnippetPath) {
         Get-Content -Path $HooksSnippetPath -Raw | ConvertFrom-Json
+    } else {
+        [pscustomobject]@{}
+    }
+    $memorySnippet = if (Test-Path $MemorySnippetPath) {
+        Get-Content -Path $MemorySnippetPath -Raw | ConvertFrom-Json
     } else {
         [pscustomobject]@{}
     }
@@ -380,6 +400,25 @@ function Merge-OpenClawConfig {
         }
     }
 
+    if ($memorySnippet.PSObject.Properties["memory"]) {
+        $configMemory = Ensure-Property -Object $config -Name "memory" -Value ([pscustomobject]@{})
+        foreach ($prop in $memorySnippet.memory.PSObject.Properties) {
+            if ($prop.Value -is [psobject] -and $configMemory.PSObject.Properties[$prop.Name] -and $configMemory.($prop.Name) -is [psobject]) {
+                foreach ($nestedProp in $prop.Value.PSObject.Properties) {
+                    if ($configMemory.($prop.Name).PSObject.Properties[$nestedProp.Name]) {
+                        $configMemory.($prop.Name).($nestedProp.Name) = $nestedProp.Value
+                    } else {
+                        $configMemory.($prop.Name) | Add-Member -NotePropertyName $nestedProp.Name -NotePropertyValue $nestedProp.Value
+                    }
+                }
+            } elseif ($configMemory.PSObject.Properties[$prop.Name]) {
+                $configMemory.($prop.Name) = $prop.Value
+            } else {
+                $configMemory | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value
+            }
+        }
+    }
+
     if ($hooksSnippet.PSObject.Properties["hooks"]) {
         $configHooks = Ensure-Property -Object $config -Name "hooks" -Value ([pscustomobject]@{})
         foreach ($scope in $hooksSnippet.hooks.PSObject.Properties) {
@@ -421,6 +460,41 @@ function Merge-OpenClawConfig {
     }
 }
 
+function Prime-QmdMemory {
+    param(
+        [string]$AgentId,
+        [string]$WorkspacePath,
+        [string]$RuntimeAgentDir,
+        [string]$PrimerPath
+    )
+    if ($SkipQmdInit) {
+        return
+    }
+    $qmd = Get-Command qmd -ErrorAction SilentlyContinue
+    if (-not $qmd) {
+        Write-Warning "qmd not found; qmd memory priming skipped for $AgentId"
+        return
+    }
+    $python = Get-PythonCommand
+    if (-not $python) {
+        Write-Warning "python3/python not found; qmd memory priming skipped for $AgentId"
+        return
+    }
+    $args = @(
+        $PrimerPath,
+        "--agent-id", $AgentId,
+        "--workspace", $WorkspacePath,
+        "--agent-dir", $RuntimeAgentDir
+    )
+    if ($QmdEmbed) {
+        $args += "--embed"
+    }
+    if ($DryRun) {
+        $args += "--dry-run"
+    }
+    & $python @args | Out-Null
+}
+
 if (-not $OpenClawHome) {
     $OpenClawHome = Get-DefaultOpenClawHome
 }
@@ -435,7 +509,9 @@ $agentsRoot = Join-Path $packageRoot "agents"
 $runtimeScriptsRoot = Join-Path $packageRoot "automation/scripts"
 $snippetPath = Join-Path $packageRoot "config/openclaw.agents.snippet.json"
 $hooksSnippetPath = Join-Path $packageRoot "config/openclaw.hooks.snippet.json"
+$memorySnippetPath = Join-Path $packageRoot "config/openclaw.memory.qmd.snippet.json"
 $dailyTemplatePath = Join-Path $commonRoot "memory/daily/TEMPLATE.md"
+$qmdPrimerPath = Join-Path $scriptRoot "prime_qmd_memory.py"
 
 Ensure-Directory -Path $OpenClawHome
 
@@ -486,6 +562,7 @@ foreach ($agentDirectory in $agentDirectories) {
     Merge-MemorySeed -WorkspacePath $workspacePath
     Update-ToolsRuntimeSection -ToolsPath (Join-Path $workspacePath "TOOLS.md")
     Ensure-GitRepo -WorkspacePath $workspacePath -CommitMessage ("chore: bootstrap {0} workspace" -f $agentId)
+    Prime-QmdMemory -AgentId $agentId -WorkspacePath $workspacePath -RuntimeAgentDir $runtimeAgentDir -PrimerPath $qmdPrimerPath
 
     $createdWorkspaces += [pscustomobject]@{
         AgentId = $agentId
@@ -494,7 +571,7 @@ foreach ($agentDirectory in $agentDirectories) {
 }
 
 if (-not $SkipConfigMerge) {
-    Merge-OpenClawConfig -TargetConfigPath $ConfigPath -ResolvedOpenClawHome $OpenClawHome -SnippetPath $snippetPath -HooksSnippetPath $hooksSnippetPath -Channel $CaptainChannel -AccountId $CaptainAccountId
+    Merge-OpenClawConfig -TargetConfigPath $ConfigPath -ResolvedOpenClawHome $OpenClawHome -SnippetPath $snippetPath -HooksSnippetPath $hooksSnippetPath -MemorySnippetPath $memorySnippetPath -Channel $CaptainChannel -AccountId $CaptainAccountId
 }
 
 $automationStatus = "skipped"
@@ -538,6 +615,13 @@ if ($CaptainChannel -and $CaptainAccountId) {
 Write-Host ("- automation: {0}" -f $automationStatus)
 if ($SkipGitInit) {
     Write-Host "- workspace Git init skipped" -ForegroundColor Yellow
+}
+if ($SkipQmdInit) {
+    Write-Host "- qmd memory priming skipped" -ForegroundColor Yellow
+} elseif ($QmdEmbed) {
+    Write-Host "- qmd memory primed with embed"
+} else {
+    Write-Host "- qmd memory primed (BM25/update only)"
 }
 if ($DryRun) {
     Write-Host "- dry-run mode: no files were written" -ForegroundColor Yellow
