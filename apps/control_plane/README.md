@@ -58,7 +58,8 @@ http://127.0.0.1:8765
 - `/experiments`：商业化实验面板
 - `/experiment?id=...`：单条实验记录详情与更新
 - `/kpi`：Daily / Weekly KPI
-- `/agents`：团队拓扑与角色状态
+- `/agents`：团队拓扑、角色状态与产出总览
+- `/agent?id=...`：单角色详情（收到 / 推进 / 终结 / 返工 / 当前持有）
 - `/cron`：cron 管理
 - `/logs`：最近执行日志
 - `/handoffs`：最近交接
@@ -87,7 +88,9 @@ http://127.0.0.1:8765
 - `/api/opportunities`
 - `/api/opportunity?id=...`
 - `/api/experiments`
+- `/api/experiment?id=...`
 - `/api/agents`
+- `/api/agent?id=...`
 - `/api/events`
 - `/api/alerts`
 - `/api/cron`

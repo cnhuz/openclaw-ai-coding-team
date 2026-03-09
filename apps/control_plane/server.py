@@ -599,39 +599,51 @@ def load_cron_jobs() -> list[dict]:
     return rows
 
 
-def load_recent_handoffs(config: AppConfig, limit: int = 8) -> list[dict]:
+def parse_handoff(path: Path) -> dict:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    sender = "-"
+    task_id = "-"
+    current_stage = "-"
+    recipient = "-"
+    next_owner = "-"
+    for line in lines:
+        if line.startswith("发送方: "):
+            sender = line.split(": ", 1)[1]
+        elif line.startswith("任务ID: "):
+            task_id = line.split(": ", 1)[1]
+        elif line.startswith("当前阶段: "):
+            current_stage = line.split(": ", 1)[1]
+        elif line.startswith("下一负责人: "):
+            next_owner = line.split(": ", 1)[1]
+    if "-to-" in path.stem:
+        recipient = path.stem.rsplit("-to-", 1)[1]
+    if recipient == "-" and next_owner != "-":
+        recipient = next_owner
+    return {
+        "path": path,
+        "task_id": task_id,
+        "sender": sender,
+        "recipient": recipient,
+        "next_owner": next_owner,
+        "current_stage": current_stage,
+        "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
+        "summary": lines[5] if len(lines) > 5 else "",
+    }
+
+
+def load_handoffs(config: AppConfig, limit: int | None = None) -> list[dict]:
     rows: list[dict] = []
     for path in sorted(config.handoffs_dir.rglob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
         if path.name == "README.md" or path.name == "TEMPLATE.md":
             continue
-        lines = path.read_text(encoding="utf-8").splitlines()
-        sender = "-"
-        task_id = "-"
-        current_stage = "-"
-        recipient = "-"
-        for line in lines:
-            if line.startswith("发送方: "):
-                sender = line.split(": ", 1)[1]
-            elif line.startswith("任务ID: "):
-                task_id = line.split(": ", 1)[1]
-            elif line.startswith("当前阶段: "):
-                current_stage = line.split(": ", 1)[1]
-        if "-to-" in path.stem:
-            recipient = path.stem.rsplit("-to-", 1)[1]
-        rows.append(
-            {
-                "path": path,
-                "task_id": task_id,
-                "sender": sender,
-                "recipient": recipient,
-                "current_stage": current_stage,
-                "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
-                "summary": lines[5] if len(lines) > 5 else "",
-            }
-        )
-        if len(rows) >= limit:
+        rows.append(parse_handoff(path))
+        if limit is not None and len(rows) >= limit:
             break
     return rows
+
+
+def load_recent_handoffs(config: AppConfig, limit: int = 8) -> list[dict]:
+    return load_handoffs(config, limit=limit)
 
 
 def load_recent_logs(config: AppConfig, limit: int = 20) -> list[dict]:
@@ -656,35 +668,10 @@ def load_recent_logs(config: AppConfig, limit: int = 20) -> list[dict]:
 
 def load_task_handoffs(config: AppConfig, task_id: str) -> list[dict]:
     rows: list[dict] = []
-    for path in sorted(config.handoffs_dir.rglob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
-        if path.name == "README.md" or path.name == "TEMPLATE.md":
+    for item in load_handoffs(config):
+        if item["task_id"] != task_id:
             continue
-        lines = path.read_text(encoding="utf-8").splitlines()
-        sender = "-"
-        current_task_id = "-"
-        current_stage = "-"
-        recipient = "-"
-        for line in lines:
-            if line.startswith("发送方: "):
-                sender = line.split(": ", 1)[1]
-            elif line.startswith("任务ID: "):
-                current_task_id = line.split(": ", 1)[1]
-            elif line.startswith("当前阶段: "):
-                current_stage = line.split(": ", 1)[1]
-        if current_task_id != task_id:
-            continue
-        if "-to-" in path.stem:
-            recipient = path.stem.rsplit("-to-", 1)[1]
-        rows.append(
-            {
-                "path": path,
-                "task_id": current_task_id,
-                "sender": sender,
-                "recipient": recipient,
-                "current_stage": current_stage,
-                "updated_at": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc),
-            }
-        )
+        rows.append(item)
     return rows
 
 
@@ -904,6 +891,14 @@ def build_agent_stats(state: dict) -> dict[str, dict]:
             "failed_jobs": 0,
             "handoff_out": 0,
             "handoff_in": 0,
+            "received_task_ids": set(),
+            "pushed_task_ids": set(),
+            "closed_task_ids": set(),
+            "returned_task_ids": set(),
+            "stale_active_tasks": [],
+            "latest_push_at": None,
+            "latest_close_at": None,
+            "recent_related_handoffs": [],
         }
 
     for item in state["agents"]:
@@ -917,6 +912,7 @@ def build_agent_stats(state: dict) -> dict[str, dict]:
         owner = task.get("owner")
         if owner in stats:
             stats[owner]["active_tasks"].append(task)
+            stats[owner]["received_task_ids"].add(task.get("task_id", "-"))
 
     for job in state["running_jobs"]:
         agent_id = job["agent_id"]
@@ -928,15 +924,91 @@ def build_agent_stats(state: dict) -> dict[str, dict]:
         if agent_id in stats:
             stats[agent_id]["failed_jobs"] += 1
 
-    for handoff in state["recent_handoffs"]:
+    stale_ids = {task.get("task_id", "-") for task in state["stale_active_tasks"]}
+    for handoff in state["all_handoffs"]:
         sender = handoff.get("sender")
         recipient = handoff.get("recipient")
+        task_id = handoff.get("task_id", "-")
+        updated_at = handoff.get("updated_at")
+        current_stage = handoff.get("current_stage", "-")
         if sender in stats:
             stats[sender]["handoff_out"] += 1
+            stats[sender]["recent_related_handoffs"].append(handoff)
+            if task_id != "-":
+                if current_stage == "Closed" or recipient == "aic-curator":
+                    stats[sender]["closed_task_ids"].add(task_id)
+                    if updated_at is not None and (
+                        stats[sender]["latest_close_at"] is None or updated_at > stats[sender]["latest_close_at"]
+                    ):
+                        stats[sender]["latest_close_at"] = updated_at
+                elif current_stage in {"Replan", "Rework"}:
+                    stats[sender]["returned_task_ids"].add(task_id)
+                else:
+                    stats[sender]["pushed_task_ids"].add(task_id)
+                    if updated_at is not None and (
+                        stats[sender]["latest_push_at"] is None or updated_at > stats[sender]["latest_push_at"]
+                    ):
+                        stats[sender]["latest_push_at"] = updated_at
         if recipient in stats:
             stats[recipient]["handoff_in"] += 1
+            stats[recipient]["recent_related_handoffs"].append(handoff)
+            if task_id != "-":
+                stats[recipient]["received_task_ids"].add(task_id)
+
+    for agent_id in stats:
+        stats[agent_id]["received_task_ids"] = sorted(stats[agent_id]["received_task_ids"])
+        stats[agent_id]["pushed_task_ids"] = sorted(stats[agent_id]["pushed_task_ids"])
+        stats[agent_id]["closed_task_ids"] = sorted(stats[agent_id]["closed_task_ids"])
+        stats[agent_id]["returned_task_ids"] = sorted(stats[agent_id]["returned_task_ids"])
+        stats[agent_id]["stale_active_tasks"] = [
+            task for task in stats[agent_id]["active_tasks"] if task.get("task_id", "-") in stale_ids
+        ]
+        stats[agent_id]["recent_related_handoffs"].sort(key=lambda item: item["updated_at"], reverse=True)
+        stats[agent_id]["recent_related_handoffs"] = stats[agent_id]["recent_related_handoffs"][:12]
 
     return stats
+
+
+def is_closing_handoff(handoff: dict) -> bool:
+    return handoff.get("current_stage") == "Closed" or handoff.get("recipient") == "aic-curator"
+
+
+def is_return_handoff(handoff: dict) -> bool:
+    return handoff.get("current_stage") in {"Replan", "Rework"}
+
+
+def task_rows_for_ids(tasks_by_id: dict[str, dict], task_ids: list[str]) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for task_id in task_ids:
+        task = tasks_by_id.get(task_id)
+        if task is None:
+            rows.append([escape(task_id), "-", "-", "-"])
+            continue
+        rows.append(
+            [
+                link(task_id, "/task?" + urlencode({"id": task_id})),
+                escape(task.get("state", "-")),
+                escape(agent_name(task.get("owner")) if task.get("owner") in AGENT_META else task.get("owner", "-")),
+                escape(task.get("title", "")),
+            ]
+        )
+    return rows
+
+
+def build_agent_related_tasks(tasks: list[dict], agent_stats: dict) -> list[dict]:
+    related_ids = set(agent_stats["received_task_ids"])
+    related_ids.update(agent_stats["pushed_task_ids"])
+    related_ids.update(agent_stats["closed_task_ids"])
+    related_ids.update(agent_stats["returned_task_ids"])
+    rows = [task for task in tasks if task.get("task_id") in related_ids]
+    active_ids = {task.get("task_id") for task in agent_stats["active_tasks"]}
+    rows.sort(
+        key=lambda item: (
+            0 if item.get("task_id") in active_ids else 1,
+            -(parse_iso(item.get("updated_at")) or datetime.fromtimestamp(0, tz=timezone.utc)).timestamp(),
+        )
+    )
+    return rows
 
 
 def agent_health(agent_stats: dict) -> tuple[str, str]:
@@ -1186,6 +1258,7 @@ def assemble_state(
     agents: list[dict],
     cron_jobs: list[dict],
     recent_handoffs: list[dict],
+    all_handoffs: list[dict],
     recent_logs: list[dict],
     runtime_ready: bool,
     runtime_source: str,
@@ -1216,6 +1289,7 @@ def assemble_state(
         "never_run_jobs": never_run_jobs,
         "failed_jobs": failed_jobs,
         "recent_handoffs": recent_handoffs,
+        "all_handoffs": all_handoffs,
         "recent_logs": recent_logs,
         "experiment_records": load_experiment_records(config),
         "runtime_ready": runtime_ready,
@@ -1246,6 +1320,7 @@ def build_fast_state(config: AppConfig) -> dict:
         agents=[],
         cron_jobs=[],
         recent_handoffs=load_recent_handoffs(config),
+        all_handoffs=load_handoffs(config),
         recent_logs=load_recent_logs(config),
         runtime_ready=False,
         runtime_source="fast-local",
@@ -1301,6 +1376,7 @@ def compute_state(config: AppConfig) -> dict:
         "never_run_jobs": never_run_jobs,
         "failed_jobs": failed_jobs,
         "recent_handoffs": load_recent_handoffs(config),
+        "all_handoffs": load_handoffs(config),
         "recent_logs": load_recent_logs(config),
         "experiment_records": load_experiment_records(config),
         "runtime_ready": True,
@@ -2139,6 +2215,7 @@ def render_experiment_detail(state: dict, experiment: dict, message: str) -> byt
 
 def render_agents(state: dict, message: str) -> bytes:
     agent_stats = state["agent_stats"]
+    tasks_by_id = {str(task.get("task_id")): task for task in state["tasks"]}
     health_colors = {
         "ok": "#73d13d",
         "warn": "#f7c948",
@@ -2164,6 +2241,10 @@ def render_agents(state: dict, message: str) -> bytes:
             stats = agent_stats[agent_id]
             health_class, health_label = agent_health(stats)
             active_tasks = stats["active_tasks"]
+            push_count = len(stats["pushed_task_ids"])
+            close_count = len(stats["closed_task_ids"])
+            receive_count = len(stats["received_task_ids"])
+            return_count = len(stats["returned_task_ids"])
             active_task_links = "<br>".join(
                 link(task["task_id"], "/task?" + urlencode({"id": str(task["task_id"])}))
                 for task in active_tasks[:3]
@@ -2171,7 +2252,7 @@ def render_agents(state: dict, message: str) -> bytes:
             cards.append(
                 f"""
                 <div class="agent-card {health_class}">
-                  <div class="agent-name">{escape(stats['name'])}</div>
+                  <div class="agent-name">{link(stats['name'], '/agent?' + urlencode({'id': agent_id}))}</div>
                   <div class="agent-id">{escape(agent_id)}</div>
                   <div class="agent-role">{escape(stats['title'])}</div>
                   <div style="margin-top:8px;"><span class="pill">{escape(health_label)}</span></div>
@@ -2180,6 +2261,10 @@ def render_agents(state: dict, message: str) -> bytes:
                     <div class="agent-stat"><div class="agent-stat-label">最近活动</div><div class="agent-stat-value">{escape(format_age(stats['last_activity']))}</div></div>
                     <div class="agent-stat"><div class="agent-stat-label">持有任务</div><div class="agent-stat-value">{escape(len(active_tasks))}</div></div>
                     <div class="agent-stat"><div class="agent-stat-label">失败 Jobs</div><div class="agent-stat-value">{escape(stats['failed_jobs'])}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">收到</div><div class="agent-stat-value">{escape(receive_count)}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">推进</div><div class="agent-stat-value">{escape(push_count)}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">终结</div><div class="agent-stat-value">{escape(close_count)}</div></div>
+                    <div class="agent-stat"><div class="agent-stat-label">返工</div><div class="agent-stat-value">{escape(return_count)}</div></div>
                   </div>
                   <div class="hint">当前任务</div>
                   <div>{active_task_links}</div>
@@ -2230,7 +2315,7 @@ def render_agents(state: dict, message: str) -> bytes:
         x, y = node_positions[agent_id]
         active_count = len(stats["active_tasks"])
         runtime_text = f"{stats['sessions']}会话 / {stats['running_jobs']}任务流"
-        task_text = f"{active_count}任务 / {stats['failed_jobs']}失败"
+        task_text = f"收{len(stats['received_task_ids'])} / 推{len(stats['pushed_task_ids'])} / 终{len(stats['closed_task_ids'])}"
         node_svg_parts.append(
             f'''
             <g>
@@ -2285,9 +2370,13 @@ def render_agents(state: dict, message: str) -> bytes:
         health_label = agent_health(stats)[1]
         rows.append(
             [
-                escape(stats["name"]),
+                link(stats["name"], "/agent?" + urlencode({"id": agent_id})),
                 escape(agent_id),
                 escape(stats["title"]),
+                escape(len(stats["received_task_ids"])),
+                escape(len(stats["pushed_task_ids"])),
+                escape(len(stats["closed_task_ids"])),
+                escape(len(stats["returned_task_ids"])),
                 escape(stats["sessions"]),
                 escape(len(stats["active_tasks"])),
                 escape(stats["running_jobs"]),
@@ -2342,10 +2431,108 @@ def render_agents(state: dict, message: str) -> bytes:
     </div>
     <div class="panel">
       <h2>团队角色总览</h2>
-      {table(['中文名', 'Agent ID', '职责', 'Sessions', '持有任务', '运行中 Jobs', '失败 Jobs', 'Last Activity', '状态'], rows)}
+      {table(['中文名', 'Agent ID', '职责', '收到', '推进', '终结', '返工', 'Sessions', '持有任务', '运行中 Jobs', '失败 Jobs', 'Last Activity', '状态'], rows)}
     </div>
     """
     return layout("团队", body, "/agents", message)
+
+
+def render_agent_detail(state: dict, agent_id: str, message: str) -> bytes:
+    if agent_id not in AGENT_META:
+        return layout("角色不存在", "<div class=\"panel\">未知角色</div>", "/agents", message)
+
+    stats = state["agent_stats"][agent_id]
+    tasks_by_id = {str(task.get("task_id")): task for task in state["tasks"]}
+    related_ids = sorted(
+        set(stats["received_task_ids"])
+        | set(stats["pushed_task_ids"])
+        | set(stats["closed_task_ids"])
+        | set(stats["returned_task_ids"])
+    )
+    received_rows = task_rows_for_ids(tasks_by_id, stats["received_task_ids"])
+    pushed_rows = task_rows_for_ids(tasks_by_id, stats["pushed_task_ids"])
+    closed_rows = task_rows_for_ids(tasks_by_id, stats["closed_task_ids"])
+    returned_rows = task_rows_for_ids(tasks_by_id, stats["returned_task_ids"])
+    current_rows = [
+        [
+            link(task["task_id"], "/task?" + urlencode({"id": str(task["task_id"])})),
+            escape(task.get("state", "-")),
+            escape(task.get("priority", "-")),
+            escape(task.get("next_step", "")),
+        ]
+        for task in stats["active_tasks"]
+    ]
+    recent_handoff_rows = [
+        [
+            link(item["task_id"], "/task?" + urlencode({"id": item["task_id"]})),
+            escape(item["sender"]),
+            escape(item["recipient"]),
+            escape(item["current_stage"]),
+            escape(format_dt(item["updated_at"])),
+            link(item["path"].name, file_path_to_url(item["path"])),
+        ]
+        for item in stats["recent_related_handoffs"]
+    ]
+    health_label = agent_health(stats)[1]
+    latest_push = format_dt(stats["latest_push_at"])
+    latest_close = format_dt(stats["latest_close_at"])
+    body = f"""
+    <div class="panel">
+      <h2>{escape(agent_name(agent_id))} / {escape(agent_title(agent_id))}</h2>
+      <div class="muted">角色 ID: {escape(agent_id)} · 当前状态: {escape(health_label)}</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">收到任务</div><div class="stat-value">{escape(len(stats['received_task_ids']))}</div></div>
+        <div class="stat-card"><div class="stat-label">推进任务</div><div class="stat-value">{escape(len(stats['pushed_task_ids']))}</div></div>
+        <div class="stat-card"><div class="stat-label">终结任务</div><div class="stat-value">{escape(len(stats['closed_task_ids']))}</div></div>
+        <div class="stat-card"><div class="stat-label">返工/退回</div><div class="stat-value">{escape(len(stats['returned_task_ids']))}</div></div>
+        <div class="stat-card"><div class="stat-label">当前持有</div><div class="stat-value">{escape(len(stats['active_tasks']))}</div></div>
+        <div class="stat-card"><div class="stat-label">陈旧持有</div><div class="stat-value">{escape(len(stats['stale_active_tasks']))}</div></div>
+        <div class="stat-card"><div class="stat-label">最近推进</div><div class="stat-value">{escape(latest_push)}</div></div>
+        <div class="stat-card"><div class="stat-label">最近终结</div><div class="stat-value">{escape(latest_close)}</div></div>
+      </div>
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>当前持有任务</h2>
+        {table(['Task', 'State', 'Priority', 'Next Step'], current_rows)}
+      </div>
+      <div class="panel">
+        <h2>角色摘要</h2>
+        <div class="muted">这个角色一共参与过 {escape(len(related_ids))} 张任务；当前会话 {escape(stats['sessions'])}，运行中 jobs {escape(stats['running_jobs'])}，失败 jobs {escape(stats['failed_jobs'])}。</div>
+        <ul>
+          <li>收到：{escape(len(stats['received_task_ids']))} 张</li>
+          <li>推进：{escape(len(stats['pushed_task_ids']))} 张</li>
+          <li>终结：{escape(len(stats['closed_task_ids']))} 张</li>
+          <li>返工/退回：{escape(len(stats['returned_task_ids']))} 张</li>
+        </ul>
+      </div>
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>推进过的任务</h2>
+        {table(['Task', 'Current State', 'Current Owner', 'Title'], pushed_rows)}
+      </div>
+      <div class="panel">
+        <h2>终结过的任务</h2>
+        {table(['Task', 'Current State', 'Current Owner', 'Title'], closed_rows)}
+      </div>
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>收到的任务</h2>
+        {table(['Task', 'Current State', 'Current Owner', 'Title'], received_rows)}
+      </div>
+      <div class="panel">
+        <h2>返工/退回任务</h2>
+        {table(['Task', 'Current State', 'Current Owner', 'Title'], returned_rows)}
+      </div>
+    </div>
+    <div class="panel">
+      <h2>最近相关交接</h2>
+      {table(['Task', '发送方', '接收方', '阶段', 'Updated', 'File'], recent_handoff_rows)}
+    </div>
+    """
+    return layout(f"{agent_name(agent_id)}", body, "/agents", message)
 
 
 def render_handoffs(state: dict, message: str) -> bytes:
@@ -2840,6 +3027,10 @@ def build_handler(config: AppConfig):
             if parsed.path == "/agents":
                 html_response(self, render_agents(state, message))
                 return
+            if parsed.path == "/agent":
+                agent_id = query.get("id", [""])[0]
+                html_response(self, render_agent_detail(state, agent_id, message))
+                return
             if parsed.path == "/cron":
                 html_response(self, render_cron(state, message))
                 return
@@ -2913,14 +3104,47 @@ def build_handler(config: AppConfig):
                         "name": agent_name(item["agent_id"]),
                         "title": agent_title(item["agent_id"]),
                         "count": item["sessions"],
+                        "received_task_count": len(item["received_task_ids"]),
+                        "pushed_task_count": len(item["pushed_task_ids"]),
+                        "closed_task_count": len(item["closed_task_ids"]),
+                        "returned_task_count": len(item["returned_task_ids"]),
                         "active_task_count": len(item["active_tasks"]),
+                        "stale_active_task_count": len(item["stale_active_tasks"]),
                         "running_jobs": item["running_jobs"],
                         "failed_jobs": item["failed_jobs"],
                         "health": agent_health(item)[1],
                         "last_activity": item["last_activity"].isoformat() if item["last_activity"] else None,
+                        "latest_push_at": item["latest_push_at"].isoformat() if item["latest_push_at"] else None,
+                        "latest_close_at": item["latest_close_at"].isoformat() if item["latest_close_at"] else None,
                     }
                     for item in state["agent_stats"].values()
                 ]
+                json_response(self, payload)
+                return
+            if parsed.path == "/api/agent":
+                agent_id = query.get("id", [""])[0]
+                item = state["agent_stats"].get(agent_id)
+                if item is None:
+                    json_response(self, {"ok": False, "error": "agent not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                payload = {
+                    "agent_id": item["agent_id"],
+                    "name": agent_name(item["agent_id"]),
+                    "title": agent_title(item["agent_id"]),
+                    "sessions": item["sessions"],
+                    "received_task_ids": item["received_task_ids"],
+                    "pushed_task_ids": item["pushed_task_ids"],
+                    "closed_task_ids": item["closed_task_ids"],
+                    "returned_task_ids": item["returned_task_ids"],
+                    "active_task_ids": [task["task_id"] for task in item["active_tasks"]],
+                    "stale_active_task_ids": [task["task_id"] for task in item["stale_active_tasks"]],
+                    "running_jobs": item["running_jobs"],
+                    "failed_jobs": item["failed_jobs"],
+                    "health": agent_health(item)[1],
+                    "last_activity": item["last_activity"].isoformat() if item["last_activity"] else None,
+                    "latest_push_at": item["latest_push_at"].isoformat() if item["latest_push_at"] else None,
+                    "latest_close_at": item["latest_close_at"].isoformat() if item["latest_close_at"] else None,
+                }
                 json_response(self, payload)
                 return
             if parsed.path == "/api/kpi":
