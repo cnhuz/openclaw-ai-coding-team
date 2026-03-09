@@ -55,6 +55,7 @@ http://127.0.0.1:8765
 - `/`：总览
 - `/tasks`：正式任务控制面
 - `/opportunities`：机会池
+- `/experiments`：商业化实验面板
 - `/kpi`：Daily / Weekly KPI
 - `/agents`：团队拓扑与角色状态
 - `/cron`：cron 管理
@@ -72,6 +73,7 @@ http://127.0.0.1:8765
 - 手动晋升 `ready_review` 机会
 - 更新任务的 `state / owner / priority / next_step / blocker`
 - 手动触发 `daily-kpi` / `weekly-kpi`
+- 首页与实验页会优先展示哪些任务/机会更接近自养目标，以及对应的分发路径、成功指标和止损条件
 
 ## API
 
@@ -82,6 +84,7 @@ http://127.0.0.1:8765
 - `/api/task?id=...`
 - `/api/opportunities`
 - `/api/opportunity?id=...`
+- `/api/experiments`
 - `/api/agents`
 - `/api/events`
 - `/api/alerts`

@@ -498,6 +498,17 @@ def task_self_sustainability_score(task: dict) -> float | None:
     return None
 
 
+def task_note_value(task: dict, prefix: str) -> str | None:
+    notes = task.get("notes")
+    if not isinstance(notes, list):
+        return None
+    for item in notes:
+        if not isinstance(item, str) or not item.startswith(prefix):
+            continue
+        return item.split("=", 1)[1].strip()
+    return None
+
+
 def format_score(value: float | None) -> str:
     if value is None:
         return "-"
@@ -981,6 +992,88 @@ def build_north_star_snapshot(state: dict) -> dict:
     }
 
 
+def build_experiment_items(state: dict) -> list[dict]:
+    opportunities_by_id = {
+        str(item.get("opportunity_id")): item
+        for item in state["opportunities"]
+        if isinstance(item, dict) and isinstance(item.get("opportunity_id"), str)
+    }
+    rows: list[dict] = []
+
+    for task in state["active_tasks"]:
+        tracks = task_tracks(task)
+        self_score = task_self_sustainability_score(task)
+        task_id = str(task.get("task_id", ""))
+        linked_opportunity = None
+        if task_id.startswith("TASK-OPP-"):
+            linked_opportunity = opportunities_by_id.get(task_id.replace("TASK-", "", 1))
+        business_model = task_note_value(task, "business_model=")
+        distribution_paths = []
+        success_indicators = []
+        stop_conditions = []
+        if linked_opportunity is not None:
+            distribution_paths = linked_opportunity.get("distribution_paths", [])
+            success_indicators = linked_opportunity.get("success_indicators", [])
+            stop_conditions = linked_opportunity.get("stop_conditions", [])
+            if self_score is None:
+                raw = linked_opportunity.get("self_sustainability_score")
+                if isinstance(raw, (int, float)):
+                    self_score = float(raw)
+            if not tracks:
+                tracks = linked_opportunity.get("commercial_tracks", [])
+            if not business_model:
+                business_model = linked_opportunity.get("business_model_hypothesis")
+        rows.append(
+            {
+                "kind": "task",
+                "label": "正式实验",
+                "id": task_id,
+                "href": "/task?" + urlencode({"id": task_id}),
+                "state": str(task.get("state", "-")),
+                "owner": str(task.get("owner", "-")),
+                "tracks": tracks,
+                "self_score": self_score,
+                "business_model": business_model or "-",
+                "distribution_paths": distribution_paths if isinstance(distribution_paths, list) else [],
+                "success_indicator": success_indicators[0] if isinstance(success_indicators, list) and success_indicators else "-",
+                "stop_condition": stop_conditions[0] if isinstance(stop_conditions, list) and stop_conditions else "-",
+                "next_step": str(task.get("next_step", "")),
+            }
+        )
+
+    for opportunity in state["opportunities"]:
+        if opportunity.get("status") not in {"ready_review", "candidate"}:
+            continue
+        raw = opportunity.get("self_sustainability_score")
+        self_score = float(raw) if isinstance(raw, (int, float)) else None
+        rows.append(
+            {
+                "kind": "opportunity",
+                "label": "待验证机会",
+                "id": str(opportunity.get("opportunity_id", "-")),
+                "href": "/opportunity?" + urlencode({"id": str(opportunity.get("opportunity_id", ""))}),
+                "state": str(opportunity.get("status", "-")),
+                "owner": "aic-researcher",
+                "tracks": opportunity.get("commercial_tracks", []),
+                "self_score": self_score,
+                "business_model": str(opportunity.get("business_model_hypothesis", "-")),
+                "distribution_paths": opportunity.get("distribution_paths", []) if isinstance(opportunity.get("distribution_paths"), list) else [],
+                "success_indicator": (opportunity.get("success_indicators") or ["-"])[0] if isinstance(opportunity.get("success_indicators"), list) else "-",
+                "stop_condition": (opportunity.get("stop_conditions") or ["-"])[0] if isinstance(opportunity.get("stop_conditions"), list) else "-",
+                "next_step": str(opportunity.get("recommended_action", "-")),
+            }
+        )
+
+    rows.sort(
+        key=lambda item: (
+            0 if item["kind"] == "task" else 1,
+            -(item["self_score"] or 0),
+            item["id"],
+        )
+    )
+    return rows
+
+
 def latest_report_file(root: Path) -> Path | None:
     if not root.exists():
         return None
@@ -1036,6 +1129,7 @@ def assemble_state(
     state["agent_stats"] = build_agent_stats(state)
     state["mainline_paths"] = build_mainline_paths(state)
     state["north_star"] = build_north_star_snapshot(state)
+    state["experiments"] = build_experiment_items(state)
     daily_kpi_path = latest_report_file(config.kpi_root / "daily")
     weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
     state["kpi"] = {
@@ -1119,6 +1213,7 @@ def compute_state(config: AppConfig) -> dict:
     state["agent_stats"] = build_agent_stats(state)
     state["mainline_paths"] = build_mainline_paths(state)
     state["north_star"] = build_north_star_snapshot(state)
+    state["experiments"] = build_experiment_items(state)
     daily_kpi_path = latest_report_file(config.kpi_root / "daily")
     weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
     state["kpi"] = {
@@ -1203,6 +1298,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
         ("总览", "/"),
         ("任务", "/tasks"),
         ("机会池", "/opportunities"),
+        ("实验", "/experiments"),
         ("KPI", "/kpi"),
         ("事件流", "/events"),
         ("Handoffs", "/handoffs"),
@@ -1335,6 +1431,7 @@ def render_summary(state: dict, message: str) -> bytes:
     secondary_task = north_star.get("secondary_task")
     top_opportunities = north_star.get("top_opportunities", [])
     north_star_risks = north_star.get("risks", [])
+    experiments = state["experiments"]
 
     runtime_jobs_value = str(len(running_jobs)) if runtime_ready else "加载中"
     runtime_never_run_value = str(len(never_run_core)) if runtime_ready else "加载中"
@@ -1376,6 +1473,21 @@ def render_summary(state: dict, message: str) -> bytes:
                 escape(item.get("score", "-")),
                 escape(item.get("recommended_action", "-")),
                 escape(item.get("summary", "")),
+            ]
+        )
+
+    experiment_rows = []
+    for item in experiments[:6]:
+        distribution_text = " / ".join(item["distribution_paths"][:2]) if item["distribution_paths"] else "-"
+        experiment_rows.append(
+            [
+                escape(item["label"]),
+                link(item["id"], item["href"]),
+                f"{escape(item['state'])} / {escape(agent_name(item['owner']) if item['owner'] in AGENT_META else item['owner'])}",
+                escape(track_labels(item["tracks"])),
+                escape(format_score(item["self_score"])),
+                escape(distribution_text),
+                escape(item["success_indicator"]),
             ]
         )
 
@@ -1516,8 +1628,8 @@ def render_summary(state: dict, message: str) -> bytes:
         {table(['Task', 'State', 'Owner', 'Priority', 'Age', 'Next Step'], summary_rows)}
       </div>
       <div class="panel">
-        <h2>机会池 Top</h2>
-        {table(['Opportunity', 'Status', 'Score', 'Action', 'Summary'], opportunity_rows)}
+        <h2>商业化实验</h2>
+        {table(['类型', '对象', '当前状态', '商业轨道', '自养分', '分发路径', '成功指标'], experiment_rows)}
       </div>
     </div>
     <div class="row two">
@@ -1657,6 +1769,28 @@ def render_opportunities(state: dict, message: str) -> bytes:
     """
     body = filters + f"<div class=\"panel\"><h2>机会池</h2>{table(['Opportunity', 'Status', 'Score', 'Action', 'Topics', 'Evidence', 'Domains', 'Task', 'Summary'], rows)}</div>"
     return layout("Opportunities", body, "/opportunities", message)
+
+
+def render_experiments(state: dict, message: str) -> bytes:
+    rows = []
+    for item in state["experiments"]:
+        rows.append(
+            [
+                escape(item["label"]),
+                link(item["id"], item["href"]),
+                escape(item["state"]),
+                escape(agent_name(item["owner"]) if item["owner"] in AGENT_META else item["owner"]),
+                escape(track_labels(item["tracks"])),
+                escape(format_score(item["self_score"])),
+                escape(item["business_model"]),
+                escape("；".join(item["distribution_paths"]) if item["distribution_paths"] else "-"),
+                escape(item["success_indicator"]),
+                escape(item["stop_condition"]),
+                escape(item["next_step"]),
+            ]
+        )
+    body = f"<div class=\"panel\"><h2>商业化实验面板</h2>{table(['类型', '对象', '阶段', '负责人', '商业轨道', '自养分', '商业模式', '分发路径', '成功指标', '止损条件', '下一步'], rows)}</div>"
+    return layout("Experiments", body, "/experiments", message)
 
 
 def render_agents(state: dict, message: str) -> bytes:
@@ -2315,6 +2449,9 @@ def build_handler(config: AppConfig):
             if parsed.path == "/opportunities":
                 html_response(self, render_opportunities(state, message))
                 return
+            if parsed.path == "/experiments":
+                html_response(self, render_experiments(state, message))
+                return
             if parsed.path == "/kpi":
                 html_response(self, render_kpi(state, message))
                 return
@@ -2386,6 +2523,9 @@ def build_handler(config: AppConfig):
                 return
             if parsed.path == "/api/opportunities":
                 json_response(self, state["opportunities"])
+                return
+            if parsed.path == "/api/experiments":
+                json_response(self, state["experiments"])
                 return
             if parsed.path == "/api/opportunity":
                 opportunity_id = query.get("id", [""])[0]
