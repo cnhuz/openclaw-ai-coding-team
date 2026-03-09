@@ -130,6 +130,7 @@ def main() -> int:
     common_root = Path(args.common_root).expanduser()
 
     merge_catalog_file(workspace_path, common_root, "data/research/sources.json", "sources", "source_id")
+    merge_catalog_file(workspace_path, common_root, "data/research/topic_profiles.json", "profiles", "topic_id")
     merge_catalog_file(workspace_path, common_root, "data/research/site_profiles.json", "sites", "site_id")
     merge_catalog_file(workspace_path, common_root, "data/research/tool_profiles.json", "tools", "tool_id")
     merge_policy_file(workspace_path, common_root, "data/execution-target.json")

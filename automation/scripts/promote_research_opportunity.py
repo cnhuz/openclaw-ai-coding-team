@@ -53,6 +53,22 @@ def build_card(opportunity: dict[str, Any], generated_at: str) -> str:
 
     keywords = normalize_list(opportunity.get("keywords"))
     keyword_text = "、".join(keywords[:12]) if keywords else "none"
+    tracks = normalize_list(opportunity.get("commercial_tracks"))
+    track_text = "、".join(tracks) if tracks else "none"
+    distribution_paths = normalize_list(opportunity.get("distribution_paths"))
+    distribution_text = "、".join(distribution_paths) if distribution_paths else "待补充"
+    success_indicators = normalize_list(opportunity.get("success_indicators"))
+    stop_conditions = normalize_list(opportunity.get("stop_conditions"))
+    pricing_hypothesis = str(opportunity.get("pricing_hypothesis", "待补充"))
+    business_model = str(opportunity.get("business_model_hypothesis", "待补充"))
+    payment_hypothesis = str(opportunity.get("payment_hypothesis", "待补充"))
+    unit_economics = str(opportunity.get("unit_economics_assessment", "待补充"))
+    automation_fit = str(opportunity.get("automation_fit_assessment", "待补充"))
+    north_star_alignment = str(opportunity.get("north_star_alignment", "unknown"))
+    self_score = opportunity.get("self_sustainability_score", "unknown")
+    distribution_lines = [f"- {item}" for item in distribution_paths] if distribution_paths else ["- 待补充"]
+    stop_lines = [f"- {item}" for item in stop_conditions] if stop_conditions else ["- 若 30~90 天内无法验证收入、流量或分发信号，应降级为 watchlist"]
+    success_lines = [f"- {item}" for item in success_indicators] if success_indicators else ["- 待补充最小收入 / 流量 / 激活指标"]
 
     lines = [
         "# Opportunity Card",
@@ -79,9 +95,31 @@ def build_card(opportunity: dict[str, Any], generated_at: str) -> str:
         "## 为什么值得做",
         opportunity.get("summary", "待补充"),
         "",
+        "## 商业模式",
+        f"- {business_model}",
+        "",
+        "## 付费假设",
+        f"- {payment_hypothesis}",
+        f"- 价格假设: {pricing_hypothesis}",
+        "",
+        "## 分发路径",
+        *distribution_lines,
+        "",
+        "## 单位经济性",
+        f"- {unit_economics}",
+        "",
+        "## 自动化适配",
+        f"- {automation_fit}",
+        "",
         "## 风险",
         "- 需要进一步验证用户真实强度与可交付边界",
         "- 需要确认是否与现有正式任务重复",
+        "",
+        "## 止损条件",
+        *stop_lines,
+        "",
+        "## 成功指标",
+        *success_lines,
         "",
         "## 建议动作",
         f"- {opportunity.get('recommended_action', 'monitor')}",
@@ -91,6 +129,9 @@ def build_card(opportunity: dict[str, Any], generated_at: str) -> str:
         "",
         "## 补充信息",
         f"- keywords: {keyword_text}",
+        f"- commercial_tracks: {track_text}",
+        f"- north_star_alignment: {north_star_alignment}",
+        f"- self_sustainability_score: {self_score}",
         f"- signal_count: {opportunity.get('signal_count', 0)}",
         f"- source_diversity: {opportunity.get('source_diversity', 0)}",
         f"- evidence_count: {opportunity.get('evidence_count', 0)}",
@@ -125,9 +166,11 @@ def create_task(task_registry_path: Path, opportunity: dict[str, Any], card_path
         acceptance=[],
         notes=[
             f"Promoted from {opportunity['opportunity_id']}",
+            f"self_sustainability_score={opportunity.get('self_sustainability_score', 'unknown')}",
+            f"business_model={opportunity.get('business_model_hypothesis', 'unknown')}",
             *list(args.note),
         ],
-        tags=["research-opportunity"],
+        tags=["research-opportunity", *[f"track:{item}" for item in normalize_list(opportunity.get("commercial_tracks"))]],
         clear_breakpoint=False,
         breakpoint_reset=False,
         breakpoint_completed=[],

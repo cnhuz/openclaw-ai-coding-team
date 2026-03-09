@@ -25,6 +25,9 @@
 - `tasks/registry.json` 只承载正式交付任务，不承载弱信号与半成品机会
 - `data/research/` 承载探索期情报、候选机会与自学习权重
 - 只有当机会满足晋升条件时，才应写入正式任务真相源
+- 探索系统的长期北极星不是“多找热点”，而是识别能帮助团队自我供血的机会
+- 因此 `topic_profiles.json` 与 `opportunities.json` 现在应同时关注：付费意愿、分发杠杆、单位经济性、自动化适配
+- `opportunities.json` 会额外维护 `self_sustainability_score`、商业模式假设、分发路径和商业轨道，用于判断机会是否值得投入
 
 ## 机会状态
 

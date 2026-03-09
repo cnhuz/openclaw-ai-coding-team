@@ -23,6 +23,13 @@ STATUS_ORDER = {
     "rejected": 4,
 }
 
+TRACK_LABELS = {
+    "cashflow": "现金流",
+    "ads": "广告流量",
+    "oss_influence": "开源影响力",
+    "compound_asset": "复利资产",
+}
+
 
 def now_iso() -> str:
     return datetime.now().astimezone().replace(microsecond=0).isoformat()
@@ -149,6 +156,231 @@ def choose_summary(signals: list[dict[str, Any]]) -> str:
         if summary:
             return summary
     return "需要进一步补充证据。"
+
+
+def topic_profile_map(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    profiles = data.get("profiles")
+    if not isinstance(profiles, list):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for item in profiles:
+        if not isinstance(item, dict):
+            continue
+        topic_id_value = item.get("topic_id")
+        if isinstance(topic_id_value, str) and topic_id_value:
+            result[topic_id_value] = item
+    return result
+
+
+def topic_weight(topic_ids: list[str], profiles: dict[str, dict[str, Any]]) -> float:
+    weights: list[float] = []
+    for topic_id_value in topic_ids:
+        profile = profiles.get(topic_id_value)
+        if not isinstance(profile, dict):
+            continue
+        weight = profile.get("north_star_weight", 1.0)
+        if isinstance(weight, (int, float)):
+            weights.append(float(weight))
+    if not weights:
+        return 1.0
+    return sum(weights) / len(weights)
+
+
+def infer_tracks(topic_ids: list[str], source_ids: list[str]) -> list[str]:
+    tracks: list[str] = []
+    if "payment-intent" in topic_ids or "user-pain-demand" in topic_ids:
+        tracks.append("cashflow")
+    if "distribution-leverage" in topic_ids:
+        tracks.extend(["ads", "compound_asset"])
+    if "technical-enablers" in topic_ids or "community-trends" in topic_ids:
+        tracks.append("oss_influence")
+    if "automation-fit" in topic_ids or "unit-economics" in topic_ids:
+        tracks.append("compound_asset")
+    if any(source_id in {"github-trending", "hacker-news", "lobsters"} for source_id in source_ids):
+        tracks.append("oss_influence")
+    if any(source_id in {"product-hunt", "x-public", "medium-devto"} for source_id in source_ids):
+        tracks.append("cashflow")
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in tracks:
+        if item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
+
+
+def tracks_from_profiles(topic_ids: list[str], profiles: dict[str, dict[str, Any]]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for topic_id_value in topic_ids:
+        profile = profiles.get(topic_id_value)
+        if not isinstance(profile, dict):
+            continue
+        for track in normalize_list(profile.get("commercial_tracks")):
+            if track in seen:
+                continue
+            seen.add(track)
+            result.append(track)
+    return result
+
+
+def text_blob(title: str, summary: str, keywords: list[str]) -> str:
+    return " ".join([title, summary, *keywords]).lower()
+
+
+def contains_any(text: str, values: list[str]) -> bool:
+    return any(item in text for item in values)
+
+
+def monetization_score(topic_ids: list[str], source_ids: list[str], text: str, has_official_source: bool) -> float:
+    score = 0.42
+    if "payment-intent" in topic_ids:
+        score += 0.24
+    if "user-pain-demand" in topic_ids:
+        score += 0.16
+    if contains_any(text, ["pricing", "price", "subscription", "付费", "定价", "购买", "订阅"]):
+        score += 0.12
+    if "product-hunt" in source_ids:
+        score += 0.06
+    if has_official_source:
+        score += 0.05
+    if contains_any(text, ["consulting", "agency", "1对1", "定制开发", "implementation service"]):
+        score -= 0.18
+    return clamp(score)
+
+
+def distribution_score(topic_ids: list[str], source_ids: list[str], text: str) -> float:
+    score = 0.4
+    if "distribution-leverage" in topic_ids:
+        score += 0.25
+    if any(source_id in {"github-trending", "hacker-news", "reddit-public", "x-public", "product-hunt", "v2ex", "medium-devto"} for source_id in source_ids):
+        score += 0.12
+    if contains_any(text, ["seo", "github", "开源", "目录", "搜索", "product hunt", "reddit", "hacker news"]):
+        score += 0.1
+    return clamp(score)
+
+
+def automation_fit_score(topic_ids: list[str], text: str) -> float:
+    score = 0.45
+    if "automation-fit" in topic_ids:
+        score += 0.25
+    if "technical-enablers" in topic_ids:
+        score += 0.14
+    if contains_any(text, ["workflow", "tool", "template", "automation", "agent", "api", "工具", "工作流", "模板"]):
+        score += 0.1
+    if contains_any(text, ["consulting", "agency", "1对1", "定制", "高客服", "onboarding-heavy"]):
+        score -= 0.2
+    return clamp(score)
+
+
+def unit_economics_score(topic_ids: list[str], text: str) -> float:
+    score = 0.45
+    if "unit-economics" in topic_ids:
+        score += 0.25
+    if "automation-fit" in topic_ids:
+        score += 0.1
+    if contains_any(text, ["low-touch", "self-serve", "低维护", "自助", "低价", "广谱"]):
+        score += 0.1
+    if contains_any(text, ["consulting", "定制", "service", "implementation", "enterprise rollout"]):
+        score -= 0.2
+    return clamp(score)
+
+
+def derive_business_model(tracks: list[str], topic_ids: list[str], text: str) -> str:
+    if "ads" in tracks or "distribution-leverage" in topic_ids:
+        return "SEO / 内容流量驱动的小网站，辅以广告、affiliate 或导流变现"
+    if "oss_influence" in tracks and ("technical-enablers" in topic_ids or "开源" in text or "github" in text):
+        return "开源影响力引流，再转托管版、增强版或模板付费"
+    if "cashflow" in tracks:
+        return "低价、广谱、可自助购买的工具型产品，优先订阅或一次性小额付费"
+    return "先验证影响力或流量，再决定是否转低价工具、模板或广告模式"
+
+
+def derive_distribution_paths(tracks: list[str], source_ids: list[str], topic_ids: list[str]) -> list[str]:
+    paths: list[str] = []
+    if "ads" in tracks or "distribution-leverage" in topic_ids:
+        paths.append("SEO / 搜索流量")
+    if any(source_id in {"github-trending", "hacker-news", "lobsters"} for source_id in source_ids):
+        paths.append("开源社区 / 开发者社区")
+    if any(source_id in {"product-hunt", "x-public", "medium-devto"} for source_id in source_ids):
+        paths.append("产品社区 / 社媒传播")
+    if any(source_id in {"reddit-public", "v2ex"} for source_id in source_ids):
+        paths.append("论坛口碑 / 社区讨论")
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in paths:
+        if item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result or ["待验证分发路径"]
+
+
+def derive_success_indicators(tracks: list[str]) -> list[str]:
+    if "cashflow" in tracks:
+        return ["首批付费用户数", "试用到付费转化率", "首月收入是否覆盖基础 token / infra 成本"]
+    if "ads" in tracks:
+        return ["自然搜索流量", "广告展示量 / 点击率", "单页面收入是否覆盖维护成本"]
+    if "oss_influence" in tracks:
+        return ["GitHub stars / installs", "自然提及量", "开源流量是否转化为试用或订阅"]
+    return ["是否形成稳定流量、留资或下一步付费验证信号"]
+
+
+def derive_stop_conditions(text: str) -> list[str]:
+    conditions = [
+        "30~90 天内无法验证最小收入、流量或转化信号时降级为 watchlist",
+        "若明显依赖重人工交付或高客服支持，则停止进入主线",
+    ]
+    if contains_any(text, ["consulting", "定制", "1对1", "implementation"]):
+        conditions.append("若需求继续滑向重定制服务，则停止产品化投入")
+    return conditions
+
+
+def derive_unit_economics_assessment(unit_score: float, text: str) -> str:
+    if unit_score >= 0.78:
+        return "单位经济性偏好：更适合低价、广谱、自助购买或低维护分发。"
+    if contains_any(text, ["consulting", "1对1", "定制"]):
+        return "单位经济性偏弱：存在重服务或定制化风险，需谨慎投入。"
+    return "单位经济性中等：需进一步验证 token / infra / 维护成本与价格空间。"
+
+
+def derive_automation_assessment(automation_score: float, text: str) -> str:
+    if automation_score >= 0.78:
+        return "自动化适配较强：更像工具、模板、工作流或低触达产品，适合 agent 团队持续运营。"
+    if contains_any(text, ["consulting", "1对1", "enterprise rollout", "定制"]):
+        return "自动化适配偏弱：更接近项目制或重服务形态，不适合长期自养主线。"
+    return "自动化适配中等：可继续验证是否能收敛为低维护产品。"
+
+
+def derive_payment_hypothesis(tracks: list[str], text: str) -> str:
+    if "cashflow" in tracks:
+        return "用户愿意为节省时间、减少往返、直接提高结果的工具型价值付费。"
+    if "ads" in tracks:
+        return "先用流量验证需求，再判断广告、affiliate 或导流是否能形成收入。"
+    if "oss_influence" in tracks:
+        return "先通过开源影响力获取用户，再用托管版、增强版或模板包实现付费转化。"
+    if contains_any(text, ["workflow", "tool", "api", "agent"]):
+        return "需验证用户是否愿意为更顺滑的工作流和自动化结果付费。"
+    return "需先验证是否存在稳定付费意愿，再决定产品化深度。"
+
+
+def derive_pricing_hypothesis(tracks: list[str]) -> str:
+    if "cashflow" in tracks:
+        return "优先低价广谱：一次性小额付费或轻量订阅。"
+    if "ads" in tracks:
+        return "优先免费获取流量，再看广告或导流收入。"
+    if "oss_influence" in tracks:
+        return "开源基础免费，增强版 / 托管版 / 模板集收费。"
+    return "先小范围验证价格锚点，再决定收费模式。"
+
+
+def derive_alignment_label(value: float) -> str:
+    if value >= 0.72:
+        return "high"
+    if value >= 0.5:
+        return "medium"
+    return "low"
 
 
 def derive_priority(score: float) -> str:
@@ -387,6 +619,7 @@ def update_source_scores(path: Path, sources_data: dict[str, Any], signals: list
 def build_opportunities(
     existing_payload: dict[str, Any],
     signals: list[dict[str, Any]],
+    topics_data: dict[str, Any],
     candidate_threshold: float,
     ready_threshold: float,
 ) -> list[dict[str, Any]]:
@@ -401,6 +634,7 @@ def build_opportunities(
                 existing_map[item_id] = item
 
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    profiles = topic_profile_map(topics_data)
     for signal in signals:
         grouped[cluster_key(signal)].append(signal)
 
@@ -443,16 +677,41 @@ def build_opportunities(
         freshness_hours = max((datetime.now().astimezone().timestamp() - latest_seen) / 3600, 0)
         source_diversity = len(source_ids)
         signal_count = len(group_signals)
-
-        score = sum(signal_scores) / len(signal_scores)
-        score += min(source_diversity - 1, 2) * 0.06
+        title = choose_title(group_signals)
+        summary = choose_summary(group_signals)
+        merged_tracks = tracks_from_profiles(topic_ids, profiles) + infer_tracks(topic_ids, source_ids)
+        commercial_tracks: list[str] = []
+        seen_tracks: set[str] = set()
+        for track in merged_tracks:
+            if track in seen_tracks:
+                continue
+            seen_tracks.add(track)
+            commercial_tracks.append(track)
+        content = text_blob(title, summary, keywords)
+        topic_weight_value = topic_weight(topic_ids, profiles)
+        north_star_topic_score = clamp(min(max(topic_weight_value / 1.4, 0.3), 0.95))
+        market_signal_score = sum(signal_scores) / len(signal_scores)
+        market_signal_score += min(source_diversity - 1, 2) * 0.06
         if signal_count >= 3:
-            score += 0.05
+            market_signal_score += 0.05
         if freshness_hours <= 24:
-            score += 0.05
+            market_signal_score += 0.05
         elif freshness_hours <= 72:
-            score += 0.02
-        score = clamp(score)
+            market_signal_score += 0.02
+        market_signal_score = clamp(market_signal_score)
+
+        monetization = monetization_score(topic_ids, source_ids, content, has_official_source)
+        distribution = distribution_score(topic_ids, source_ids, content)
+        automation_fit = automation_fit_score(topic_ids, content)
+        unit_economics = unit_economics_score(topic_ids, content)
+        self_sustainability_score = clamp(
+            monetization * 0.26
+            + distribution * 0.2
+            + automation_fit * 0.2
+            + unit_economics * 0.2
+            + north_star_topic_score * 0.14
+        )
+        score = clamp(market_signal_score * 0.68 + self_sustainability_score * 0.32)
 
         confidence = clamp(sum(confidence_values) / len(confidence_values))
         importance = clamp(sum(importance_values) / len(importance_values))
@@ -470,24 +729,45 @@ def build_opportunities(
             existing.get("card_path"),
         )
         recommendation = derive_action(status)
+        business_model_hypothesis = derive_business_model(commercial_tracks, topic_ids, content)
+        distribution_paths = derive_distribution_paths(commercial_tracks, source_ids, topic_ids)
+        success_indicators = derive_success_indicators(commercial_tracks)
+        stop_conditions = derive_stop_conditions(content)
+        unit_economics_assessment = derive_unit_economics_assessment(unit_economics, content)
+        automation_fit_assessment = derive_automation_assessment(automation_fit, content)
+        payment_hypothesis = derive_payment_hypothesis(commercial_tracks, content)
+        pricing_hypothesis = derive_pricing_hypothesis(commercial_tracks)
+        north_star_alignment = derive_alignment_label(self_sustainability_score)
 
         opportunity = {
             "opportunity_id": opp_id,
             "cluster_key": group_key,
-            "title": choose_title(group_signals),
+            "title": title,
             "status": status,
             "priority": derive_priority(score),
             "score": score,
+            "market_signal_score": market_signal_score,
+            "self_sustainability_score": self_sustainability_score,
+            "north_star_alignment": north_star_alignment,
             "confidence": confidence,
             "importance": importance,
             "topic_ids": topic_ids,
             "source_ids": source_ids,
+            "commercial_tracks": commercial_tracks,
             "signal_ids": [str(item.get("signal_id")) for item in group_signals if str(item.get("signal_id", "")).strip()],
             "signal_count": signal_count,
             "source_diversity": source_diversity,
-            "summary": choose_summary(group_signals),
+            "summary": summary,
             "recommended_action": recommendation,
             "keywords": keywords,
+            "business_model_hypothesis": business_model_hypothesis,
+            "distribution_paths": distribution_paths,
+            "payment_hypothesis": payment_hypothesis,
+            "pricing_hypothesis": pricing_hypothesis,
+            "unit_economics_assessment": unit_economics_assessment,
+            "automation_fit_assessment": automation_fit_assessment,
+            "success_indicators": success_indicators,
+            "stop_conditions": stop_conditions,
             "evidence_urls": evidence_urls,
             "evidence_titles": evidence_titles,
             "evidence_count": evidence_count,
@@ -538,6 +818,11 @@ def render_md(opportunities: list[dict[str, Any]], signal_count: int) -> str:
                 f"- status: {item['status']}",
                 f"- priority: {item['priority']}",
                 f"- score: {item['score']}",
+                f"- market_signal_score: {item.get('market_signal_score', '-')}",
+                f"- self_sustainability_score: {item.get('self_sustainability_score', '-')}",
+                f"- north_star_alignment: {item.get('north_star_alignment', '-')}",
+                f"- commercial_tracks: {', '.join(TRACK_LABELS.get(track, track) for track in item.get('commercial_tracks', [])) or 'none'}",
+                f"- business_model_hypothesis: {item.get('business_model_hypothesis', '-')}",
                 f"- recommended_action: {item['recommended_action']}",
                 f"- signal_count: {item['signal_count']}",
                 f"- source_diversity: {item['source_diversity']}",
@@ -577,7 +862,13 @@ def main() -> int:
         opportunities_path = Path(args.opportunities).expanduser()
         existing_payload = load_json(opportunities_path, {"opportunities": []})
 
-        opportunities = build_opportunities(existing_payload, signals, args.candidate_threshold, args.ready_threshold)
+        opportunities = build_opportunities(
+            existing_payload,
+            signals,
+            topics_data,
+            args.candidate_threshold,
+            args.ready_threshold,
+        )
         payload = {
             "schemaVersion": 1,
             "updatedAt": now_iso(),
