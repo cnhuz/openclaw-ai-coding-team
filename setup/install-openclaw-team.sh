@@ -136,7 +136,7 @@ preserve_runtime_state() {
   local workspace_path="$1"
   local stash_dir="$2"
   local rel_path
-  for rel_path in MEMORY.md memory tasks specs verification-reports release-notes data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/execution-target.json data/research data/skills data/kpi handoffs; do
+  for rel_path in MEMORY.md memory tasks specs verification-reports release-notes data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/execution-target.json data/research data/skills data/kpi data/experiments handoffs; do
     if [[ ! -e "$workspace_path/$rel_path" ]]; then
       continue
     fi
@@ -149,7 +149,7 @@ restore_runtime_state() {
   local workspace_path="$1"
   local stash_dir="$2"
   local rel_path
-  for rel_path in MEMORY.md memory tasks specs verification-reports release-notes data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/execution-target.json data/research data/skills data/kpi handoffs; do
+  for rel_path in MEMORY.md memory tasks specs verification-reports release-notes data/dashboard.md data/exec-logs data/knowledge-proposals data/github-backup-policy.json data/execution-target.json data/research data/skills data/kpi data/experiments handoffs; do
     if [[ ! -e "$stash_dir/$rel_path" ]]; then
       continue
     fi
@@ -179,7 +179,7 @@ ensure_core_exec_log_dirs() {
 ensure_runtime_defaults() {
   local workspace_path="$1"
   local rel_path
-  for rel_path in data/execution-target.json data/research/site_profiles.json data/research/tool_profiles.json data/skills/README.md data/skills/policy.json data/skills/dependency_policy.json data/skills/catalog.json data/kpi/README.md data/kpi/rules.v1.json; do
+  for rel_path in data/execution-target.json data/research/site_profiles.json data/research/tool_profiles.json data/skills/README.md data/skills/policy.json data/skills/dependency_policy.json data/skills/catalog.json data/kpi/README.md data/kpi/rules.v1.json data/experiments/README.md data/experiments/registry.json; do
     if [[ -e "$workspace_path/$rel_path" || ! -e "$COMMON_ROOT/$rel_path" ]]; then
       continue
     fi
@@ -286,7 +286,7 @@ ensure_today_daily_log() {
 update_tools_runtime_section() {
   local tools_path="$1"
   local block
-  block=$'## Installed Runtime Paths\n\n- `scripts/scan_sessions_incremental.py`: enabled\n- `scripts/lockfile.py`: enabled\n- `scripts/weekly_gate.py`: enabled\n- `scripts/git_backup_health.py`: enabled\n- `scripts/validate_task_registry.py`: enabled\n- `scripts/query_task_registry.py`: enabled\n- `scripts/update_task_registry.py`: enabled\n- `scripts/create_handoff.py`: enabled\n- `scripts/refresh_dashboard.py`: enabled\n- `scripts/execution_target.py`: enabled\n- `scripts/worktree_lifecycle.py`: enabled\n- `scripts/verify_worktree_lifecycle.py`: enabled\n- `scripts/compute_agent_kpi.py`: enabled\n- `scripts/prepare_exploration_batch.py`: enabled\n- `scripts/prepare_site_frontier.py`: enabled\n- `scripts/prepare_planner_intake.py`: enabled\n- `scripts/prepare_builder_intake.py`: enabled\n- `scripts/prepare_tester_intake.py`: enabled\n- `scripts/prepare_releaser_intake.py`: enabled\n- `scripts/prepare_reflector_intake.py`: enabled\n- `scripts/validate_reflection_closeout.py`: enabled\n- `scripts/record_research_signal.py`: enabled\n- `scripts/triage_research_signals.py`: enabled\n- `scripts/query_research_opportunities.py`: enabled\n- `scripts/promote_research_opportunity.py`: enabled\n- `scripts/bridge_ready_review_opportunity.py`: enabled\n- `scripts/bridge_approved_task.py`: enabled\n- `scripts/exploration_learning.py`: enabled\n- `scripts/upsert_site_profile.py`: enabled\n- `scripts/plan_tool_route.py`: enabled\n- `scripts/record_tool_attempt.py`: enabled\n- `scripts/tool_route_learning.py`: enabled\n- `scripts/sync_skill_inventory.py`: enabled\n- `scripts/register_skill_candidate.py`: enabled\n- `scripts/query_skill_catalog.py`: enabled\n- `scripts/bootstrap_skill_dependency.py`: enabled\n- `scripts/install_skill_candidate.py`: enabled\n- `AGENTS.md`: merged common + role rules\n- `BOOT.md`: optional `boot-md` startup checklist'
+  block=$'## Installed Runtime Paths\n\n- `scripts/scan_sessions_incremental.py`: enabled\n- `scripts/lockfile.py`: enabled\n- `scripts/weekly_gate.py`: enabled\n- `scripts/git_backup_health.py`: enabled\n- `scripts/validate_task_registry.py`: enabled\n- `scripts/query_task_registry.py`: enabled\n- `scripts/update_task_registry.py`: enabled\n- `scripts/update_experiment_registry.py`: enabled\n- `scripts/create_handoff.py`: enabled\n- `scripts/refresh_dashboard.py`: enabled\n- `scripts/execution_target.py`: enabled\n- `scripts/worktree_lifecycle.py`: enabled\n- `scripts/verify_worktree_lifecycle.py`: enabled\n- `scripts/compute_agent_kpi.py`: enabled\n- `scripts/prepare_exploration_batch.py`: enabled\n- `scripts/prepare_site_frontier.py`: enabled\n- `scripts/prepare_planner_intake.py`: enabled\n- `scripts/prepare_builder_intake.py`: enabled\n- `scripts/prepare_tester_intake.py`: enabled\n- `scripts/prepare_releaser_intake.py`: enabled\n- `scripts/prepare_reflector_intake.py`: enabled\n- `scripts/validate_reflection_closeout.py`: enabled\n- `scripts/record_research_signal.py`: enabled\n- `scripts/triage_research_signals.py`: enabled\n- `scripts/query_research_opportunities.py`: enabled\n- `scripts/promote_research_opportunity.py`: enabled\n- `scripts/bridge_ready_review_opportunity.py`: enabled\n- `scripts/bridge_approved_task.py`: enabled\n- `scripts/exploration_learning.py`: enabled\n- `scripts/upsert_site_profile.py`: enabled\n- `scripts/plan_tool_route.py`: enabled\n- `scripts/record_tool_attempt.py`: enabled\n- `scripts/tool_route_learning.py`: enabled\n- `scripts/sync_skill_inventory.py`: enabled\n- `scripts/register_skill_candidate.py`: enabled\n- `scripts/query_skill_catalog.py`: enabled\n- `scripts/bootstrap_skill_dependency.py`: enabled\n- `scripts/install_skill_candidate.py`: enabled\n- `AGENTS.md`: merged common + role rules\n- `BOOT.md`: optional `boot-md` startup checklist'
   append_if_missing "$tools_path" "$block"
 }
 

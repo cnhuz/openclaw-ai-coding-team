@@ -141,6 +141,23 @@
 - 把 session 数或日志数量直接当绩效
 - 在没有写入输出文件的前提下，把一次命令行结果当长期历史
 
+### `scripts/update_experiment_registry.py`
+
+用途：
+
+- 创建或更新 `data/experiments/registry.json`
+- 记录收入、分发、定价、成本、自动化适配等商业化实验的结构化结果
+
+什么时候用：
+
+- `captain` 想把某条任务或机会正式转成“可验证商业假设”时
+- `researcher` / `planner` / `releaser` 想把分发、付费、单位经济性结论落成结构化实验记录时
+
+不要用于：
+
+- 替代正式任务状态流转
+- 把模糊想法直接写成“已经验证”的实验结论
+
 ### `scripts/prepare_exploration_batch.py`
 
 用途：

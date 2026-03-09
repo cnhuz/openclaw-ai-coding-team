@@ -13,6 +13,7 @@
 - `validate_task_registry.py`：本地任务真相源校验
 - `query_task_registry.py`：本地任务真相源查询摘要
 - `update_task_registry.py`：本地任务真相源更新器
+- `update_experiment_registry.py`：商业化实验真相源更新器
 - `create_handoff.py`：结构化交接生成器
 - `refresh_dashboard.py`：运行看板刷新器
 - `execution_target.py`：加载真实执行目标配置
@@ -57,6 +58,7 @@
 - `scripts/validate_task_registry.py`
 - `scripts/query_task_registry.py`
 - `scripts/update_task_registry.py`
+- `scripts/update_experiment_registry.py`
 - `scripts/create_handoff.py`
 - `scripts/refresh_dashboard.py`
 - `scripts/execution_target.py`
@@ -118,6 +120,8 @@
   - `python3 scripts/query_task_registry.py --path tasks/registry.json --view captain --blocked-only --format md`
 - 创建或更新任务：
   - `python3 scripts/update_task_registry.py --path tasks/registry.json --task-id TASK-001 --title "重构任务源" --state Building --owner aic-builder --priority P1 --next-step "完成脚本改造" --append-evidence protocols/task-source-of-truth.md`
+- 创建或更新商业化实验：
+  - `python3 scripts/update_experiment_registry.py --path data/experiments/registry.json --source-type task --source-id TASK-001 --title "验证首批付费意愿" --hypothesis-type revenue --hypothesis "用户愿意为该工具的小额订阅付费" --metric-name "首批付费用户数" --target-value "10" --unit "users" --status planned --owner aic-captain --append-track cashflow --append-distribution-path "SEO / 搜索流量" --append-success-indicator "首批付费用户数" --append-stop-condition "30 天内无有效付费信号则停止" --format md`
 - 生成交接并同步真相源：
   - `python3 scripts/create_handoff.py --task-id TASK-001 --current-stage Building --goal "转交测试" --deliverable "实现 diff + 验证建议" --evidence src/app.ts --next-owner aic-tester --breakpoint "先准备 fixture" --sync-registry --sync-state Verifying --sync-owner aic-tester --sync-next-step "执行回归"`
 - 刷新运行看板：

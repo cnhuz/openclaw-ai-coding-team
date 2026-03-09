@@ -134,6 +134,7 @@ def main() -> int:
     merge_catalog_file(workspace_path, common_root, "data/research/site_profiles.json", "sites", "site_id")
     merge_catalog_file(workspace_path, common_root, "data/research/tool_profiles.json", "tools", "tool_id")
     merge_policy_file(workspace_path, common_root, "data/execution-target.json")
+    merge_policy_file(workspace_path, common_root, "data/experiments/registry.json")
     merge_policy_file(workspace_path, common_root, "data/kpi/rules.v1.json")
     merge_policy_file(workspace_path, common_root, "data/skills/policy.json")
     merge_policy_file(workspace_path, common_root, "data/skills/catalog.json")

@@ -56,7 +56,7 @@ function Preserve-RuntimeState {
         [string]$WorkspacePath,
         [string]$StashPath
     )
-    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "specs", "verification-reports", "release-notes", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "data/kpi", "handoffs")) {
+    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "specs", "verification-reports", "release-notes", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "data/kpi", "data/experiments", "handoffs")) {
         $sourcePath = Join-Path $WorkspacePath $relativePath
         if (-not (Test-Path $sourcePath)) {
             continue
@@ -72,7 +72,7 @@ function Restore-RuntimeState {
         [string]$WorkspacePath,
         [string]$StashPath
     )
-    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "specs", "verification-reports", "release-notes", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "data/kpi", "handoffs")) {
+    foreach ($relativePath in @("MEMORY.md", "memory", "tasks", "specs", "verification-reports", "release-notes", "data/dashboard.md", "data/exec-logs", "data/knowledge-proposals", "data/github-backup-policy.json", "data/execution-target.json", "data/research", "data/skills", "data/kpi", "data/experiments", "handoffs")) {
         $sourcePath = Join-Path $StashPath $relativePath
         if (-not (Test-Path $sourcePath)) {
             continue
@@ -106,7 +106,7 @@ function Ensure-RuntimeDefaults {
         [string]$WorkspacePath,
         [string]$CommonRoot
     )
-    foreach ($relativePath in @("data/execution-target.json", "data/research/site_profiles.json", "data/research/tool_profiles.json", "data/skills/README.md", "data/skills/policy.json", "data/skills/dependency_policy.json", "data/skills/catalog.json", "data/kpi/README.md", "data/kpi/rules.v1.json")) {
+    foreach ($relativePath in @("data/execution-target.json", "data/research/site_profiles.json", "data/research/tool_profiles.json", "data/skills/README.md", "data/skills/policy.json", "data/skills/dependency_policy.json", "data/skills/catalog.json", "data/kpi/README.md", "data/kpi/rules.v1.json", "data/experiments/README.md", "data/experiments/registry.json")) {
         $targetPath = Join-Path $WorkspacePath $relativePath
         $sourcePath = Join-Path $CommonRoot $relativePath
         if ((Test-Path $targetPath) -or -not (Test-Path $sourcePath)) {
@@ -245,6 +245,7 @@ function Update-ToolsRuntimeSection {
         "- `scripts/validate_task_registry.py`：enabled",
         "- `scripts/query_task_registry.py`：enabled",
         "- `scripts/update_task_registry.py`：enabled",
+        "- `scripts/update_experiment_registry.py`：enabled",
         "- `scripts/create_handoff.py`：enabled",
         "- `scripts/refresh_dashboard.py`：enabled",
         "- `scripts/execution_target.py`：enabled",

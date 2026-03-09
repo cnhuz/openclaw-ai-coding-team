@@ -314,6 +314,7 @@
 - `Agents` 面板现已升级为中文角色卡、团队拓扑和主线路径，不再只是 `aic-xxx` 列表
 - 控制台首页现已增加“团队北极星”面板，会直接显示自养目标、当前主目标和最值得验证的自养机会
 - 控制台现已增加 `/experiments` 商业化实验面板，用于查看当前任务/机会对应的商业轨道、分发路径、成功指标与止损条件
+- 商业化实验现已支持结构化记录：`data/experiments/registry.json`，可跟踪收入、分发、定价、成本与自动化适配实验
 - 控制台现已支持 `/kpi`，可查看 Daily / Weekly agent scorecards，并手动触发 KPI job
 - KPI 引擎第一版：`python3 automation/scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period daily --write`
 - 研究机会现在会额外输出商业模式、付费假设、分发路径、单位经济性、自动化适配、成功指标与止损条件
