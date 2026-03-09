@@ -36,6 +36,7 @@ CORE_EXEC_LOG_JOBS = [
     "memory-hourly",
     "memory-weekly",
 ]
+PROTECTED_AGENT_IDS = {"main", "aic-captain"}
 
 
 def now_iso() -> str:
@@ -382,6 +383,8 @@ def create_workspace(args: argparse.Namespace, repo_root: Path) -> dict[str, Any
 
 
 def retire_agent(args: argparse.Namespace) -> dict[str, Any]:
+    if args.agent_id in PROTECTED_AGENT_IDS:
+        raise SystemExit(f"agent is protected and cannot be retired: {args.agent_id}")
     openclaw_home = Path(args.openclaw_home).expanduser().resolve()
     config_path = Path(args.config_path).expanduser().resolve()
     config = load_config(config_path)

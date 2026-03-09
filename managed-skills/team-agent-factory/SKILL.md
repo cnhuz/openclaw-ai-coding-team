@@ -57,6 +57,7 @@ description: 为 aic-captain 提供团队拓扑治理能力。用于根据任务
 
 ## 退役 agent 时的硬规则
 
+- `main` 与 `aic-captain` 属于核心角色，不允许退役
 - 若它仍持有活跃任务，必须先重分配，或显式传 `--reassign-active-tasks-to`
 - 退役不是直接删干净，而是：
   - 从 `openclaw.json` 移除
