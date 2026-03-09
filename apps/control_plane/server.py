@@ -1088,6 +1088,129 @@ def build_north_star_snapshot(state: dict) -> dict:
     }
 
 
+def parse_markdown_section(path: Path, heading: str) -> list[str]:
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    marker = f"## {heading}"
+    started = False
+    result: list[str] = []
+    for line in lines:
+        if line.strip() == marker:
+            started = True
+            continue
+        if started and line.startswith("## "):
+            break
+        if not started:
+            continue
+        if line.strip():
+            result.append(line.rstrip())
+    return result
+
+
+def find_release_note(config: AppConfig, task_id: str) -> Path | None:
+    path = config.workspaces["aic-releaser"] / "release-notes" / f"{task_id}.md"
+    if path.exists():
+        return path
+    return None
+
+
+def find_reflection(config: AppConfig, task_id: str) -> Path | None:
+    path = config.reflector_workspace / "reflections" / f"{task_id}.md"
+    if path.exists():
+        return path
+    return None
+
+
+def delivery_class_from_release(path: Path | None) -> str:
+    if path is None:
+        return "未知"
+    text = path.read_text(encoding="utf-8")
+    if "worktree_lifecycle.py" in text or "verify_worktree_lifecycle.py" in text:
+        return "工具/脚本交付"
+    if "repo_only" in text or "specs/" in text:
+        return "规格/文档交付"
+    return "待判断"
+
+
+def extract_delivery_summary(path: Path | None) -> str:
+    if path is None:
+        return "-"
+    for section_name in ["本次实现范围", "发布范围"]:
+        section = parse_markdown_section(path, section_name)
+        bullets = [line[2:].strip() for line in section if line.startswith("- ")]
+        if bullets:
+            return "；".join(bullets[:2])
+    return "-"
+
+
+def extract_reflection_conclusion(path: Path | None) -> str:
+    if path is None:
+        return "-"
+    section = parse_markdown_section(path, "结论")
+    if not section:
+        return "-"
+    return " ".join(line.strip() for line in section[:3])
+
+
+def build_outcome_snapshot(state: dict) -> dict:
+    config: AppConfig = state["config"]
+    closed_tasks = [task for task in state["tasks"] if task.get("state") == "Closed"]
+    closed_tasks.sort(
+        key=lambda item: -(parse_iso(item.get("updated_at")) or datetime.fromtimestamp(0, tz=timezone.utc)).timestamp()
+    )
+    outputs: list[dict] = []
+    regression_count = 0
+    product_count = 0
+    for task in closed_tasks:
+        task_id = str(task.get("task_id", "-"))
+        if task_id.startswith("TASK-REGRESSION-"):
+            regression_count += 1
+        else:
+            product_count += 1
+        release_note = find_release_note(config, task_id)
+        reflection = find_reflection(config, task_id)
+        outputs.append(
+            {
+                "task_id": task_id,
+                "title": str(task.get("title", "")),
+                "updated_at": parse_iso(task.get("updated_at")),
+                "owner": str(task.get("owner", "-")),
+                "delivery_class": delivery_class_from_release(release_note),
+                "delivery_summary": extract_delivery_summary(release_note),
+                "reflection_conclusion": extract_reflection_conclusion(reflection),
+                "release_note": release_note,
+                "reflection": reflection,
+            }
+        )
+
+    experiments = state["experiment_records"]
+    experiment_status_counts = Counter(str(item.get("status", "-")) for item in experiments)
+    realized_experiments = [
+        item for item in experiments if str(item.get("current_value", "")).strip() or str(item.get("result_summary", "")).strip()
+    ]
+
+    if product_count == 0 and realized_experiments:
+        evolution_summary = "团队已开始做真实经营实验，但产品型交付仍偏少。"
+    elif product_count > 0 and not realized_experiments:
+        evolution_summary = "团队能持续完成闭环并沉淀产物，但商业收益验证仍弱。"
+    elif product_count > 0 and realized_experiments:
+        evolution_summary = "团队同时在推进产品交付和经营验证，开始从流程团队向自养团队转变。"
+    else:
+        evolution_summary = "当前主要在积累流程与探索能力，外部产品与收益信号仍不足。"
+
+    return {
+        "recent_outputs": outputs[:8],
+        "closed_total": len(closed_tasks),
+        "closed_product_like": product_count,
+        "closed_regressions": regression_count,
+        "experiments_total": len(experiments),
+        "experiments_with_results": len(realized_experiments),
+        "experiment_status_counts": dict(experiment_status_counts),
+        "evolution_summary": evolution_summary,
+    }
+
+
 def build_experiment_items(state: dict) -> list[dict]:
     experiment_records = state.get("experiment_records", [])
     record_by_source: dict[tuple[str, str], list[dict]] = {}
@@ -1301,6 +1424,7 @@ def assemble_state(
     state["mainline_paths"] = build_mainline_paths(state)
     state["north_star"] = build_north_star_snapshot(state)
     state["experiments"] = build_experiment_items(state)
+    state["outcomes"] = build_outcome_snapshot(state)
     daily_kpi_path = latest_report_file(config.kpi_root / "daily")
     weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
     state["kpi"] = {
@@ -1388,6 +1512,7 @@ def compute_state(config: AppConfig) -> dict:
     state["mainline_paths"] = build_mainline_paths(state)
     state["north_star"] = build_north_star_snapshot(state)
     state["experiments"] = build_experiment_items(state)
+    state["outcomes"] = build_outcome_snapshot(state)
     daily_kpi_path = latest_report_file(config.kpi_root / "daily")
     weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
     state["kpi"] = {
@@ -1606,6 +1731,7 @@ def render_summary(state: dict, message: str) -> bytes:
     top_opportunities = north_star.get("top_opportunities", [])
     north_star_risks = north_star.get("risks", [])
     experiments = state["experiments"]
+    outcomes = state["outcomes"]
 
     runtime_jobs_value = str(len(running_jobs)) if runtime_ready else "加载中"
     runtime_never_run_value = str(len(never_run_core)) if runtime_ready else "加载中"
@@ -1621,6 +1747,8 @@ def render_summary(state: dict, message: str) -> bytes:
             card("未自然跑过核心 Jobs", runtime_never_run_value, "需要区分未到时间和未触发"),
             card("活跃 Agents", runtime_agents_value, "最近有 session"),
             card("Daily KPI Top", daily_top or "-", "最新评分 Top 3"),
+            card("已闭环产出", str(outcomes["closed_total"]), "当前已关单产物总数"),
+            card("实验有结果", str(outcomes["experiments_with_results"]), "已有真实经营验证结果的实验"),
         ]
     )
 
@@ -1664,6 +1792,32 @@ def render_summary(state: dict, message: str) -> bytes:
                 escape(item["success_indicator"]),
             ]
         )
+
+    output_rows = []
+    for item in outcomes["recent_outputs"]:
+        output_rows.append(
+            [
+                link(item["task_id"], "/task?" + urlencode({"id": item["task_id"]})),
+                escape(item["delivery_class"]),
+                escape(format_dt(item["updated_at"])),
+                escape(item["delivery_summary"]),
+                link(item["release_note"].name, file_path_to_url(item["release_note"])) if item["release_note"] else "-",
+            ]
+        )
+
+    experiment_status_counts = outcomes["experiment_status_counts"]
+    benefit_rows = [[escape(status), escape(count)] for status, count in sorted(experiment_status_counts.items())]
+    if not benefit_rows:
+        benefit_rows.append(["暂无实验", "0"])
+
+    evolution_rows = [
+        ["产品/方向闭环", escape(outcomes["closed_product_like"])],
+        ["系统回归/维护闭环", escape(outcomes["closed_regressions"])],
+        ["实验总数", escape(outcomes["experiments_total"])],
+        ["已有结果实验", escape(outcomes["experiments_with_results"])],
+        ["Ready Review 机会", escape(ready_review)],
+        ["候选机会", escape(candidates)],
+    ]
 
     north_star_rows = []
     if primary_task is not None:
@@ -1796,6 +1950,36 @@ def render_summary(state: dict, message: str) -> bytes:
       </div>
     </div>
     <div class="grid" style="margin-top:16px">{cards}</div>
+    <div class="row two">
+      <div class="panel">
+        <h2>本周真实产出</h2>
+        <div class="muted">这里看的是已经 Closed 的交付物，不只是流程是否跑过，而是最终沉淀成了什么。</div>
+        {table(['Task', '交付类型', 'Closed At', '产出摘要', 'Release'], output_rows)}
+      </div>
+      <div class="panel">
+        <h2>收益验证状态</h2>
+        <div class="muted">这里看的是经营验证是否真的开始产生结果，而不只是“有个想法”或“建了实验”。</div>
+        {table(['实验状态', '数量'], benefit_rows)}
+        <ul>
+          <li>实验总数：<strong>{escape(outcomes['experiments_total'])}</strong></li>
+          <li>已有结果实验：<strong>{escape(outcomes['experiments_with_results'])}</strong></li>
+          <li>当前系统更强的是流程与探索，真实收入/流量结果仍需继续补。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>持续演进</h2>
+        <div class="muted">{escape(outcomes['evolution_summary'])}</div>
+        {table(['维度', '当前值'], evolution_rows)}
+      </div>
+      <div class="panel">
+        <h2>最近复盘结论</h2>
+        <ul>
+          {''.join(f"<li><strong>{escape(item['task_id'])}</strong>：{escape(item['reflection_conclusion'])}</li>" for item in outcomes['recent_outputs'][:3]) or '<li class="muted">暂无</li>'}
+        </ul>
+      </div>
+    </div>
     <div class="row two">
       <div class="panel">
         <h2>活跃任务</h2>
@@ -3060,6 +3244,14 @@ def build_handler(config: AppConfig):
                         "primary_task_id": state["north_star"]["primary_task"].get("task_id") if state["north_star"]["primary_task"] else None,
                         "secondary_task_id": state["north_star"]["secondary_task"].get("task_id") if state["north_star"]["secondary_task"] else None,
                         "top_opportunity_ids": [item.get("opportunity_id") for item in state["north_star"]["top_opportunities"]],
+                    },
+                    "outcomes": {
+                        "closed_total": state["outcomes"]["closed_total"],
+                        "closed_product_like": state["outcomes"]["closed_product_like"],
+                        "closed_regressions": state["outcomes"]["closed_regressions"],
+                        "experiments_total": state["outcomes"]["experiments_total"],
+                        "experiments_with_results": state["outcomes"]["experiments_with_results"],
+                        "evolution_summary": state["outcomes"]["evolution_summary"],
                     },
                 }
                 json_response(self, payload)
