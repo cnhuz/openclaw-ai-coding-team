@@ -67,6 +67,13 @@ AGENT_META = {
     "aic-curator": {"name": "典藏官", "title": "知识沉淀与归档", "lane": "复盘层"},
 }
 
+TRACK_LABELS = {
+    "cashflow": "现金流",
+    "ads": "广告流量",
+    "oss_influence": "开源影响力",
+    "compound_asset": "复利资产",
+}
+
 AGENT_LAYERS = [
     ["aic-captain"],
     ["aic-planner", "aic-dispatcher", "aic-reflector"],
@@ -109,6 +116,22 @@ CORE_JOB_NAMES = {
     "opportunity-promotion",
     "daily-kpi",
     "weekly-kpi",
+}
+
+STATE_PROGRESS_ORDER = {
+    "Intake": 0,
+    "Researching": 1,
+    "Scoped": 2,
+    "Planned": 3,
+    "Approved": 4,
+    "Building": 5,
+    "Verifying": 6,
+    "Staging": 7,
+    "Released": 8,
+    "Observing": 9,
+    "Replan": 2,
+    "Rework": 5,
+    "Closed": 10,
 }
 
 ALERT_STALE_HOURS = 6
@@ -263,6 +286,16 @@ def agent_name(agent_id: str) -> str:
 
 def agent_title(agent_id: str) -> str:
     return agent_meta(agent_id)["title"]
+
+
+def track_label(track: str) -> str:
+    return TRACK_LABELS.get(track, track)
+
+
+def track_labels(values: list[str]) -> str:
+    if not values:
+        return "-"
+    return " / ".join(track_label(item) for item in values)
 
 
 def link(label: str, href: str) -> str:
@@ -430,6 +463,55 @@ def load_opportunities(config: AppConfig) -> list[dict]:
         )
     )
     return opportunities
+
+
+def task_tracks(task: dict) -> list[str]:
+    tags = task.get("tags")
+    if not isinstance(tags, list):
+        return []
+    result: list[str] = []
+    for item in tags:
+        if not isinstance(item, str):
+            continue
+        if not item.startswith("track:"):
+            continue
+        track = item.split(":", 1)[1].strip()
+        if track and track not in result:
+            result.append(track)
+    return result
+
+
+def task_self_sustainability_score(task: dict) -> float | None:
+    notes = task.get("notes")
+    if not isinstance(notes, list):
+        return None
+    for item in notes:
+        if not isinstance(item, str):
+            continue
+        if not item.startswith("self_sustainability_score="):
+            continue
+        raw = item.split("=", 1)[1].strip()
+        try:
+            return float(raw)
+        except ValueError:
+            return None
+    return None
+
+
+def format_score(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.2f}"
+
+
+def score_band(value: float | None) -> str:
+    if value is None:
+        return "未知"
+    if value >= 0.72:
+        return "高"
+    if value >= 0.5:
+        return "中"
+    return "低"
 
 
 def load_agents() -> list[dict]:
@@ -854,6 +936,51 @@ def build_mainline_paths(state: dict) -> list[dict]:
     return rows
 
 
+def build_north_star_snapshot(state: dict) -> dict:
+    active_tasks = sorted(
+        state["active_tasks"],
+        key=lambda item: (
+            -STATE_PROGRESS_ORDER.get(str(item.get("state", "")), -1),
+            str(item.get("priority", "P9")),
+            -(parse_iso(item.get("updated_at")) or datetime.fromtimestamp(0, tz=timezone.utc)).timestamp(),
+        ),
+    )
+    opportunities = sorted(
+        [item for item in state["opportunities"] if item.get("status") in {"ready_review", "candidate"}],
+        key=lambda item: (
+            0 if item.get("status") == "ready_review" else 1,
+            -float(item.get("self_sustainability_score", 0) or 0),
+            -float(item.get("score", 0) or 0),
+        ),
+    )
+    primary_task = active_tasks[0] if active_tasks else None
+    secondary_task = active_tasks[1] if len(active_tasks) > 1 else None
+    top_opportunities = opportunities[:3]
+
+    risks: list[str] = []
+    missing_business = [
+        task
+        for task in active_tasks
+        if task_self_sustainability_score(task) is None and not task_tracks(task)
+    ]
+    if missing_business:
+        risks.append(f"{len(missing_business)} 张主线任务缺少自养元数据，仍需要人工判断商业化方向。")
+    ready_review = [item for item in opportunities if item.get("status") == "ready_review"]
+    if ready_review:
+        risks.append(f"当前有 {len(ready_review)} 个 ready_review 机会待处理，若长期不晋升会延迟新现金流实验。")
+    if not top_opportunities:
+        risks.append("当前机会池里没有高置信的自养候选，探索质量需要继续提升。")
+
+    return {
+        "long_term_goal": "以最低可持续成本，持续发现、验证、构建、分发并变现可复利数字产品，覆盖团队 token、基础设施与维护成本。",
+        "core_loop": "发现机会 → 验证付费/流量假设 → 快速构建 → 低成本分发 → 形成收入或可转化影响力 → 继续供血",
+        "primary_task": primary_task,
+        "secondary_task": secondary_task,
+        "top_opportunities": top_opportunities,
+        "risks": risks,
+    }
+
+
 def latest_report_file(root: Path) -> Path | None:
     if not root.exists():
         return None
@@ -908,6 +1035,7 @@ def assemble_state(
     state["events"] = build_global_events(state)
     state["agent_stats"] = build_agent_stats(state)
     state["mainline_paths"] = build_mainline_paths(state)
+    state["north_star"] = build_north_star_snapshot(state)
     daily_kpi_path = latest_report_file(config.kpi_root / "daily")
     weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
     state["kpi"] = {
@@ -990,6 +1118,7 @@ def compute_state(config: AppConfig) -> dict:
     state["events"] = build_global_events(state)
     state["agent_stats"] = build_agent_stats(state)
     state["mainline_paths"] = build_mainline_paths(state)
+    state["north_star"] = build_north_star_snapshot(state)
     daily_kpi_path = latest_report_file(config.kpi_root / "daily")
     weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
     state["kpi"] = {
@@ -1195,10 +1324,17 @@ def render_summary(state: dict, message: str) -> bytes:
     alerts = state["alerts"]
     daily_kpi = state["kpi"]["daily_report"]
     daily_summary = daily_kpi.get("summary", {}) if isinstance(daily_kpi, dict) else {}
+    weekly_kpi = state["kpi"]["weekly_report"]
+    weekly_summary = weekly_kpi.get("summary", {}) if isinstance(weekly_kpi, dict) else {}
     if isinstance(daily_summary.get("top_agents"), list):
         daily_top = ", ".join(agent_name(item) for item in daily_summary.get("top_agents", [])[:3])
     else:
         daily_top = "-"
+    north_star = state["north_star"]
+    primary_task = north_star.get("primary_task")
+    secondary_task = north_star.get("secondary_task")
+    top_opportunities = north_star.get("top_opportunities", [])
+    north_star_risks = north_star.get("risks", [])
 
     runtime_jobs_value = str(len(running_jobs)) if runtime_ready else "加载中"
     runtime_never_run_value = str(len(never_run_core)) if runtime_ready else "加载中"
@@ -1240,6 +1376,38 @@ def render_summary(state: dict, message: str) -> bytes:
                 escape(item.get("score", "-")),
                 escape(item.get("recommended_action", "-")),
                 escape(item.get("summary", "")),
+            ]
+        )
+
+    north_star_rows = []
+    if primary_task is not None:
+        north_star_rows.append(
+            [
+                "当前主目标",
+                link(str(primary_task.get("task_id", "-")), "/task?" + urlencode({"id": str(primary_task.get("task_id", ""))})),
+                f"{escape(primary_task.get('state', '-'))} / {escape(agent_name(str(primary_task.get('owner', '-'))))}",
+                escape(track_labels(task_tracks(primary_task))),
+                escape(format_score(task_self_sustainability_score(primary_task))),
+            ]
+        )
+    if secondary_task is not None:
+        north_star_rows.append(
+            [
+                "次主目标",
+                link(str(secondary_task.get("task_id", "-")), "/task?" + urlencode({"id": str(secondary_task.get("task_id", ""))})),
+                f"{escape(secondary_task.get('state', '-'))} / {escape(agent_name(str(secondary_task.get('owner', '-'))))}",
+                escape(track_labels(task_tracks(secondary_task))),
+                escape(format_score(task_self_sustainability_score(secondary_task))),
+            ]
+        )
+    for item in top_opportunities:
+        north_star_rows.append(
+            [
+                "候选机会",
+                link(str(item.get("opportunity_id", "-")), "/opportunity?" + urlencode({"id": str(item.get("opportunity_id", ""))})),
+                f"{escape(item.get('status', '-'))} / {escape(item.get('recommended_action', '-'))}",
+                escape(track_labels(item.get("commercial_tracks", []))),
+                escape(format_score(float(item.get("self_sustainability_score", 0) or 0))),
             ]
         )
 
@@ -1330,6 +1498,17 @@ def render_summary(state: dict, message: str) -> bytes:
       <h2>控制面说明</h2>
       <div class="muted">正式任务状态以 <code>{escape(config.registry_path)}</code> 为真相源；本页面和 <code>dashboard.md</code> 都是观察面。</div>
     </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>团队北极星</h2>
+        <div class="muted">{escape(north_star.get('long_term_goal', '-'))}</div>
+        <div class="hint" style="margin-top:10px;">{escape(north_star.get('core_loop', '-'))}</div>
+      </div>
+      <div class="panel">
+        <h2>当前目标面板</h2>
+        {table(['类型', '对象', '当前状态', '商业轨道', '自养分'], north_star_rows)}
+      </div>
+    </div>
     <div class="grid" style="margin-top:16px">{cards}</div>
     <div class="row two">
       <div class="panel">
@@ -1354,15 +1533,21 @@ def render_summary(state: dict, message: str) -> bytes:
         {table(['Level', 'Type', 'Summary'], alert_rows)}
       </div>
       <div class="panel">
-        <h2>全局事件流</h2>
-        {table(['Time', 'Kind', 'Actor', 'Task', 'Summary'], event_rows)}
+        <h2>北极星风险</h2>
+        <ul>{''.join(f'<li>{escape(item)}</li>' for item in north_star_risks) or '<li class="muted">暂无</li>'}</ul>
       </div>
     </div>
     <div class="row two">
       <div class="panel">
+        <h2>全局事件流</h2>
+        {table(['Time', 'Kind', 'Actor', 'Task', 'Summary'], event_rows)}
+      </div>
+      <div class="panel">
         <h2>最新执行日志</h2>
         {table(['Agent', 'Job', 'Updated', 'Path'], log_rows)}
       </div>
+    </div>
+    <div class="row two">
       <div class="panel">
         <h2>运行判断</h2>
         <ul>
@@ -1371,6 +1556,16 @@ def render_summary(state: dict, message: str) -> bytes:
           <li>研究池 ready_review：<strong>{escape(ready_review)}</strong> 个</li>
           <li>核心 job 未自然跑过：<strong>{escape(len(never_run_core))}</strong> 个</li>
           <li>若“活跃任务少 + 研究池堆积 + 核心 job 长期未自然跑”，通常不是偷懒，而是调度节奏或主线分配有问题。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>KPI 快照</h2>
+        <ul>
+          <li>Daily 已评分：<strong>{escape(daily_summary.get('scored_agents', '-'))}</strong> 个</li>
+          <li>Weekly 已评分：<strong>{escape(weekly_summary.get('scored_agents', '-'))}</strong> 个</li>
+          <li>Daily 风险角色：<strong>{escape(', '.join(daily_summary.get('risk_agents', [])[:3]) if isinstance(daily_summary.get('risk_agents'), list) else '-')}</strong></li>
+          <li>最新 Daily 报告：{link(format_path(state['kpi']['daily_path'], [config.openclaw_home, config.repo_root]), file_path_to_url(state['kpi']['daily_path'])) if state['kpi']['daily_path'] else '-'}</li>
+          <li>最新 Weekly 报告：{link(format_path(state['kpi']['weekly_path'], [config.openclaw_home, config.repo_root]), file_path_to_url(state['kpi']['weekly_path'])) if state['kpi']['weekly_path'] else '-'}</li>
         </ul>
       </div>
     </div>
@@ -2001,9 +2196,21 @@ def render_opportunity_detail(state: dict, opportunity: dict, message: str) -> b
             ("opportunity_id", escape(opportunity.get("opportunity_id", "-"))),
             ("status", f"<span class=\"pill\">{escape(opportunity.get('status', '-'))}</span>"),
             ("score", escape(opportunity.get("score", "-"))),
+            ("market_signal_score", escape(opportunity.get("market_signal_score", "-"))),
+            ("self_sustainability_score", escape(opportunity.get("self_sustainability_score", "-"))),
+            ("north_star_alignment", escape(opportunity.get("north_star_alignment", "-"))),
             ("recommended_action", escape(opportunity.get("recommended_action", "-"))),
             ("task_id", task_link),
             ("topic_ids", escape(", ".join(opportunity.get("topic_ids", [])) if isinstance(opportunity.get("topic_ids"), list) else "-")),
+            ("commercial_tracks", escape(track_labels(opportunity.get("commercial_tracks", [])))),
+            ("business_model_hypothesis", escape(opportunity.get("business_model_hypothesis", "-"))),
+            ("payment_hypothesis", escape(opportunity.get("payment_hypothesis", "-"))),
+            ("pricing_hypothesis", escape(opportunity.get("pricing_hypothesis", "-"))),
+            ("distribution_paths", escape("；".join(opportunity.get("distribution_paths", [])) if isinstance(opportunity.get("distribution_paths"), list) else "-")),
+            ("unit_economics_assessment", escape(opportunity.get("unit_economics_assessment", "-"))),
+            ("automation_fit_assessment", escape(opportunity.get("automation_fit_assessment", "-"))),
+            ("success_indicators", escape("；".join(opportunity.get("success_indicators", [])) if isinstance(opportunity.get("success_indicators"), list) else "-")),
+            ("stop_conditions", escape("；".join(opportunity.get("stop_conditions", [])) if isinstance(opportunity.get("stop_conditions"), list) else "-")),
             ("evidence_count", escape(opportunity.get("evidence_count", 0))),
             ("evidence_domain_diversity", escape(opportunity.get("evidence_domain_diversity", 0))),
             ("has_official_source", escape(opportunity.get("has_official_source", False))),
@@ -2158,6 +2365,11 @@ def build_handler(config: AppConfig):
                     "candidate": state["opportunity_counts"].get("candidate", 0),
                     "running_jobs": len(state["running_jobs"]),
                     "never_run_jobs": len(state["never_run_jobs"]),
+                    "north_star": {
+                        "primary_task_id": state["north_star"]["primary_task"].get("task_id") if state["north_star"]["primary_task"] else None,
+                        "secondary_task_id": state["north_star"]["secondary_task"].get("task_id") if state["north_star"]["secondary_task"] else None,
+                        "top_opportunity_ids": [item.get("opportunity_id") for item in state["north_star"]["top_opportunities"]],
+                    },
                 }
                 json_response(self, payload)
                 return
