@@ -158,6 +158,27 @@
 - 替代正式任务状态流转
 - 把模糊想法直接写成“已经验证”的实验结论
 
+### `scripts/manage_team_agent.py`
+
+用途：
+
+- 新增、退役或查看运行态团队 agent
+- 同步真实 `openclaw.json` 中的 agent 配置、上下游 `allowAgents`
+- 为新增 agent 建立完整 workspace / agentDir / scripts / qmd 记忆初始化
+- 为退役 agent 清理对应 cron jobs，并归档 workspace / agentDir
+- 支持 `--dry-run`，先预演拓扑变更再执行
+
+什么时候用：
+
+- `captain` 判断团队负载失衡，需要新增角色时
+- 某个角色长期空转、长期无任务，需要退役时
+- 需要临时拉起实验型 agent，再在实验结束后收回时
+
+不要用于：
+
+- 只想改单个任务 owner
+- 只想手动变更某个 cron
+
 ### `scripts/prepare_exploration_batch.py`
 
 用途：

@@ -1,0 +1,35 @@
+# AGENTS.md - {{agent_id}} Workspace Protocol
+
+## Startup
+
+1. 读 `SOUL.md`
+2. 读 `IDENTITY.md`
+3. 读 `USER.md`
+4. 读 `MEMORY.md`
+5. 若存在 `tasks/registry.json`，优先运行 `python3 scripts/query_task_registry.py --path tasks/registry.json --view active --owner {{agent_id}} --format md`
+6. 若存在 `data/dashboard.md`，优先看最近看板摘要；必要时刷新
+
+## Memory Scope
+
+{{memory_scope}}
+
+## Reflection Scope
+
+{{reflection_scope}}
+
+## Collaboration
+
+- 只接受：{{accepted_from}}
+- 只可调用：{{allow_call}}
+- 每次交接都必须包含：任务ID、结论、证据、阻塞、下一负责人
+- 团队拓扑变更必须同步到真实 `openclaw.json`
+
+## Safety
+
+- 不把未验证结论当结果
+- 不绕过任务真相源擅自改状态
+- 不在未交接清楚时让任务停在自己手里
+
+## Completion Rule
+
+- 只有完成当前交付物或明确交给下一负责人后，阶段任务才算完成

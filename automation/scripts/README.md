@@ -44,6 +44,7 @@
 - `install_skill_candidate.py`：按 policy 自动安装可信低风险 skill
 - `worktree_lifecycle.py`：为单个 agent 管理 git worktree 的 setup / status / cleanup 生命周期元数据与安全清理边界
 - `compute_agent_kpi.py`：按证据计算 Daily / Weekly agent KPI scorecards
+- `manage_team_agent.py`：新增/退役全功能团队 agent，并同步 runtime `openclaw.json`；支持 `--dry-run`
 
 它们由本仓库持续维护，目前既包含原有记忆/任务协同脚本，也包含新加入的持续探索脚本。
 
@@ -89,6 +90,7 @@
 - `scripts/install_skill_candidate.py`
 - `scripts/worktree_lifecycle.py`
 - `scripts/compute_agent_kpi.py`
+- `scripts/manage_team_agent.py`
 
 这样 cron prompt 可以直接使用相对路径，不必依赖当前仓库结构。
 
@@ -189,6 +191,12 @@
   - `python3 scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period daily --format md`
 - 计算 Weekly KPI 并写入运行态：
   - `python3 scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period weekly --write --format md`
+- 查看当前团队拓扑与 active task 持有情况：
+  - `python3 scripts/manage_team_agent.py list --openclaw-home ~/.openclaw --config-path ~/.openclaw/openclaw.json --format md`
+- 新增一个全功能 agent：
+  - `python3 scripts/manage_team_agent.py add --openclaw-home ~/.openclaw --config-path ~/.openclaw/openclaw.json --agent-id aic-growth --role-name 增长官 --role-title 分发与增长实验 --mission "围绕自养目标持续验证分发、转化与留存" --accepted-from aic-captain --allow-call aic-researcher --core-responsibility "拆解增长实验并维护实验节奏" --input "来自 captain 的增长目标与实验任务" --output "增长实验记录与建议" --boundary "不直接改产品路线" --memory-focus "记录高价值分发路径与失败模式" --reflection-focus "反思是否在做高噪音低收益动作" --heartbeat-every 1h --dry-run --format md`
+- 退役一个 agent：
+  - `python3 scripts/manage_team_agent.py retire --openclaw-home ~/.openclaw --config-path ~/.openclaw/openclaw.json --agent-id aic-growth --reassign-active-tasks-to aic-captain --dry-run --format md`
 
 原则：
 

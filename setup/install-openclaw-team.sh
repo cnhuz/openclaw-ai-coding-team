@@ -107,6 +107,7 @@ PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMMON_ROOT="$PACKAGE_ROOT/templates/common"
 AGENTS_ROOT="$PACKAGE_ROOT/agents"
 RUNTIME_SCRIPTS_ROOT="$PACKAGE_ROOT/automation/scripts"
+MANAGED_SKILLS_ROOT="$PACKAGE_ROOT/managed-skills"
 SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.agents.snippet.json"
 HOOKS_SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.hooks.snippet.json"
 MEMORY_SNIPPET_PATH="$PACKAGE_ROOT/config/openclaw.memory.qmd.snippet.json"
@@ -130,6 +131,24 @@ copy_dir_content() {
     return
   fi
   cp -a "$source"/. "$destination"/
+}
+
+sync_managed_skills() {
+  local skills_root="$1"
+  local target_root="$2"
+  if [[ ! -d "$skills_root" ]]; then
+    return
+  fi
+  ensure_dir "$target_root"
+  while IFS= read -r -d '' skill_dir; do
+    local skill_name
+    skill_name="$(basename "$skill_dir")"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      continue
+    fi
+    rm -rf "$target_root/$skill_name"
+    cp -a "$skill_dir" "$target_root/$skill_name"
+  done < <(find "$skills_root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 }
 
 preserve_runtime_state() {
@@ -286,7 +305,7 @@ ensure_today_daily_log() {
 update_tools_runtime_section() {
   local tools_path="$1"
   local block
-  block=$'## Installed Runtime Paths\n\n- `scripts/scan_sessions_incremental.py`: enabled\n- `scripts/lockfile.py`: enabled\n- `scripts/weekly_gate.py`: enabled\n- `scripts/git_backup_health.py`: enabled\n- `scripts/validate_task_registry.py`: enabled\n- `scripts/query_task_registry.py`: enabled\n- `scripts/update_task_registry.py`: enabled\n- `scripts/update_experiment_registry.py`: enabled\n- `scripts/create_handoff.py`: enabled\n- `scripts/refresh_dashboard.py`: enabled\n- `scripts/execution_target.py`: enabled\n- `scripts/worktree_lifecycle.py`: enabled\n- `scripts/verify_worktree_lifecycle.py`: enabled\n- `scripts/compute_agent_kpi.py`: enabled\n- `scripts/prepare_exploration_batch.py`: enabled\n- `scripts/prepare_site_frontier.py`: enabled\n- `scripts/prepare_planner_intake.py`: enabled\n- `scripts/prepare_builder_intake.py`: enabled\n- `scripts/prepare_tester_intake.py`: enabled\n- `scripts/prepare_releaser_intake.py`: enabled\n- `scripts/prepare_reflector_intake.py`: enabled\n- `scripts/validate_reflection_closeout.py`: enabled\n- `scripts/record_research_signal.py`: enabled\n- `scripts/triage_research_signals.py`: enabled\n- `scripts/query_research_opportunities.py`: enabled\n- `scripts/promote_research_opportunity.py`: enabled\n- `scripts/bridge_ready_review_opportunity.py`: enabled\n- `scripts/bridge_approved_task.py`: enabled\n- `scripts/exploration_learning.py`: enabled\n- `scripts/upsert_site_profile.py`: enabled\n- `scripts/plan_tool_route.py`: enabled\n- `scripts/record_tool_attempt.py`: enabled\n- `scripts/tool_route_learning.py`: enabled\n- `scripts/sync_skill_inventory.py`: enabled\n- `scripts/register_skill_candidate.py`: enabled\n- `scripts/query_skill_catalog.py`: enabled\n- `scripts/bootstrap_skill_dependency.py`: enabled\n- `scripts/install_skill_candidate.py`: enabled\n- `AGENTS.md`: merged common + role rules\n- `BOOT.md`: optional `boot-md` startup checklist'
+  block=$'## Installed Runtime Paths\n\n- `scripts/scan_sessions_incremental.py`: enabled\n- `scripts/lockfile.py`: enabled\n- `scripts/weekly_gate.py`: enabled\n- `scripts/git_backup_health.py`: enabled\n- `scripts/validate_task_registry.py`: enabled\n- `scripts/query_task_registry.py`: enabled\n- `scripts/update_task_registry.py`: enabled\n- `scripts/update_experiment_registry.py`: enabled\n- `scripts/create_handoff.py`: enabled\n- `scripts/refresh_dashboard.py`: enabled\n- `scripts/execution_target.py`: enabled\n- `scripts/worktree_lifecycle.py`: enabled\n- `scripts/verify_worktree_lifecycle.py`: enabled\n- `scripts/compute_agent_kpi.py`: enabled\n- `scripts/manage_team_agent.py`: enabled\n- `scripts/prepare_exploration_batch.py`: enabled\n- `scripts/prepare_site_frontier.py`: enabled\n- `scripts/prepare_planner_intake.py`: enabled\n- `scripts/prepare_builder_intake.py`: enabled\n- `scripts/prepare_tester_intake.py`: enabled\n- `scripts/prepare_releaser_intake.py`: enabled\n- `scripts/prepare_reflector_intake.py`: enabled\n- `scripts/validate_reflection_closeout.py`: enabled\n- `scripts/record_research_signal.py`: enabled\n- `scripts/triage_research_signals.py`: enabled\n- `scripts/query_research_opportunities.py`: enabled\n- `scripts/promote_research_opportunity.py`: enabled\n- `scripts/bridge_ready_review_opportunity.py`: enabled\n- `scripts/bridge_approved_task.py`: enabled\n- `scripts/exploration_learning.py`: enabled\n- `scripts/upsert_site_profile.py`: enabled\n- `scripts/plan_tool_route.py`: enabled\n- `scripts/record_tool_attempt.py`: enabled\n- `scripts/tool_route_learning.py`: enabled\n- `scripts/sync_skill_inventory.py`: enabled\n- `scripts/register_skill_candidate.py`: enabled\n- `scripts/query_skill_catalog.py`: enabled\n- `scripts/bootstrap_skill_dependency.py`: enabled\n- `scripts/install_skill_candidate.py`: enabled\n- `skills/team-agent-factory`: enabled\n- `AGENTS.md`: merged common + role rules\n- `BOOT.md`: optional `boot-md` startup checklist'
   append_if_missing "$tools_path" "$block"
 }
 
@@ -302,18 +321,32 @@ merge_role_agents() {
     return
   fi
 
-  if grep -Fq "$start_marker" "$agents_path"; then
-    return
-  fi
-
   if [[ "$DRY_RUN" -eq 1 ]]; then
     return
   fi
-
+  local role_content block existing before after merged
+  role_content="$(cat "$role_agents_path")"
+  block="$(printf '%s\n\n%s\n%s\n' "$start_marker" "$role_content" "$end_marker")"
+  existing="$(cat "$agents_path")"
+  if [[ "$existing" == *"$start_marker"* && "$existing" == *"$end_marker"* ]]; then
+    before="${existing%%"$start_marker"*}"
+    after="${existing#*"$end_marker"}"
+    merged="${before%"${before##*[!$'\n ']}"}"
+    if [[ -n "$merged" ]]; then
+      merged="${merged}"$'\n\n'
+    fi
+    merged+="${block}"
+    after="${after#"${after%%[!$'\n ']*}"}"
+    if [[ -n "$after" ]]; then
+      merged+=$'\n'"${after}"
+    fi
+    printf '%s\n' "${merged%$'\n'}" > "$agents_path"
+    return
+  fi
   {
     printf '\n%s\n\n' "$start_marker"
-    cat "$role_agents_path"
-    printf '\n%s\n' "$end_marker"
+    printf '%s\n' "$role_content"
+    printf '%s\n' "$end_marker"
   } >> "$agents_path"
 }
 
@@ -575,6 +608,8 @@ while IFS= read -r -d '' agent_dir; do
 
   created_workspaces+=("$agent_id -> $workspace_path")
 done < <(find "$AGENTS_ROOT" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+
+sync_managed_skills "$MANAGED_SKILLS_ROOT" "$OPENCLAW_HOME/skills"
 
 if [[ "$SKIP_CONFIG_MERGE" -eq 0 ]]; then
   merge_openclaw_config "$CONFIG_PATH" "$OPENCLAW_HOME" "$SNIPPET_PATH" "$HOOKS_SNIPPET_PATH" "$MEMORY_SNIPPET_PATH" "$CAPTAIN_CHANNEL" "$CAPTAIN_ACCOUNT_ID"

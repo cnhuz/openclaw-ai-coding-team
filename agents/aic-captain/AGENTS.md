@@ -29,6 +29,7 @@
 - 只可调用：`aic-planner`, `aic-dispatcher`, `aic-reflector`
 - 只由你直接对老板汇报
 - 交接必须包含：任务ID、结论、证据、阻塞、下一负责人
+- 当团队负载、KPI、主线推进或实验验证明显失衡时，允许使用 `team-agent-factory` skill 调整团队拓扑；所有新增/退役必须先 dry-run，再同步真实 `openclaw.json`
 
 ## Safety
 

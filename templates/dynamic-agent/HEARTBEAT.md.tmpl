@@ -1,0 +1,9 @@
+# HEARTBEAT.md
+
+收到 heartbeat 时：
+
+1. 若存在 `tasks/registry.json`，先运行 `python3 scripts/query_task_registry.py --path tasks/registry.json --view active --owner {{agent_id}} --format md`
+2. 若存在 `data/dashboard.md`，必要时刷新看板
+3. 若当前有自己持有的活跃任务，优先推进、留证据、明确下一负责人
+4. 若存在持续失败、重复返工或长期卡住的任务，明确写入记忆并升级交给上游
+5. 若没有自己的活跃任务且无异常，返回 `HEARTBEAT_OK`

@@ -51,6 +51,27 @@ function Copy-DirectoryContent {
     }
 }
 
+function Sync-ManagedSkills {
+    param(
+        [string]$SkillsRoot,
+        [string]$TargetRoot
+    )
+    if (-not (Test-Path $SkillsRoot)) {
+        return
+    }
+    Ensure-Directory -Path $TargetRoot
+    Get-ChildItem -Path $SkillsRoot -Directory | Sort-Object Name | ForEach-Object {
+        $targetPath = Join-Path $TargetRoot $_.Name
+        if ($DryRun) {
+            return
+        }
+        if (Test-Path $targetPath) {
+            Remove-Item -Path $targetPath -Recurse -Force
+        }
+        Copy-Item -Path $_.FullName -Destination $targetPath -Recurse -Force
+    }
+}
+
 function Preserve-RuntimeState {
     param(
         [string]$WorkspacePath,
@@ -251,6 +272,7 @@ function Update-ToolsRuntimeSection {
         "- `scripts/execution_target.py`：enabled",
         "- `scripts/verify_worktree_lifecycle.py`：enabled",
         "- `scripts/compute_agent_kpi.py`：enabled",
+        "- `scripts/manage_team_agent.py`：enabled",
         "- `scripts/prepare_exploration_batch.py`：enabled",
         "- `scripts/prepare_site_frontier.py`：enabled",
         "- `scripts/prepare_planner_intake.py`：enabled",
@@ -276,6 +298,7 @@ function Update-ToolsRuntimeSection {
         "- `scripts/bootstrap_skill_dependency.py`：enabled",
         "- `scripts/install_skill_candidate.py`：enabled",
         "- `scripts/worktree_lifecycle.py`：enabled",
+        "- `skills/team-agent-factory`：enabled",
         "- `AGENTS.md`：merged common + role rules",
         "- `BOOT.md`：optional `boot-md` startup checklist"
     ) -join "`r`n"
@@ -295,18 +318,23 @@ function Merge-RoleAgents {
     $startMarker = "<!-- OPENCLAW-ROLE:${AgentId}:BEGIN -->"
     $endMarker = "<!-- OPENCLAW-ROLE:${AgentId}:END -->"
     $existing = Get-Content -Path $agentsPath -Raw
-    if ($existing.Contains($startMarker) -or $DryRun) {
+    if ($DryRun) {
         return
     }
     $roleContent = Get-Content -Path $RoleAgentsPath -Raw
-    $append = @(
-        "",
+    $block = @(
         $startMarker,
         "",
         $roleContent.Trim(),
-        $endMarker,
-        ""
+        $endMarker
     ) -join "`r`n"
+    if ($existing.Contains($startMarker) -and $existing.Contains($endMarker)) {
+        $pattern = "(?s)<!-- OPENCLAW-ROLE:$([regex]::Escape($AgentId)):BEGIN -->.*?<!-- OPENCLAW-ROLE:$([regex]::Escape($AgentId)):END -->"
+        $updated = [regex]::Replace($existing, $pattern, $block)
+        Set-Content -Path $agentsPath -Value ($updated.TrimEnd() + "`r`n") -Encoding UTF8
+        return
+    }
+    $append = @("", $block, "") -join "`r`n"
     Add-Content -Path $agentsPath -Value $append
 }
 
@@ -606,6 +634,7 @@ $packageRoot = Split-Path -Parent $scriptRoot
 $commonRoot = Join-Path $packageRoot "templates/common"
 $agentsRoot = Join-Path $packageRoot "agents"
 $runtimeScriptsRoot = Join-Path $packageRoot "automation/scripts"
+$managedSkillsRoot = Join-Path $packageRoot "managed-skills"
 $snippetPath = Join-Path $packageRoot "config/openclaw.agents.snippet.json"
 $hooksSnippetPath = Join-Path $packageRoot "config/openclaw.hooks.snippet.json"
 $memorySnippetPath = Join-Path $packageRoot "config/openclaw.memory.qmd.snippet.json"
@@ -670,6 +699,8 @@ foreach ($agentDirectory in $agentDirectories) {
         Workspace = $workspacePath
     }
 }
+
+Sync-ManagedSkills -SkillsRoot $managedSkillsRoot -TargetRoot (Join-Path $OpenClawHome "skills")
 
 if (-not $SkipConfigMerge) {
     Merge-OpenClawConfig -TargetConfigPath $ConfigPath -ResolvedOpenClawHome $OpenClawHome -SnippetPath $snippetPath -HooksSnippetPath $hooksSnippetPath -MemorySnippetPath $memorySnippetPath -Channel $CaptainChannel -AccountId $CaptainAccountId
