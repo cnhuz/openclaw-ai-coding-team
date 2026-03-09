@@ -1,0 +1,4 @@
+version: 1
+display_name: Team Agent Factory
+short_description: 为船长新增或退役全功能团队 agent，并同步 runtime 配置。
+default_prompt: 根据团队负载与经营目标，评估是否需要新增或退役 agent；如需变更，先 dry-run，再执行 manage_team_agent.py，并回验 openclaw.json、allowAgents、cron 与 qmd。
