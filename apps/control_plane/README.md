@@ -61,6 +61,7 @@ http://127.0.0.1:8765
 - `/`：总览
 - `/tasks`：正式任务控制面
 - `/opportunities`：机会池
+- `/opportunities` 现已按 `市场范围 / 机会类型` 展示，可直接区分开发者工具、广谱需求、搜索需求与流量资产机会
 - `/experiments`：商业化实验面板
 - `/experiment?id=...`：单条实验记录详情与更新
 - `/team-factory`：新增/退役 agent 的可视化团队工厂，支持 dry-run 与 apply

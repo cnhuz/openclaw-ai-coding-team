@@ -74,6 +74,18 @@ TRACK_LABELS = {
     "oss_influence": "开源影响力",
     "compound_asset": "复利资产",
 }
+MARKET_SCOPE_LABELS = {
+    "developer": "开发者",
+    "broad": "广谱市场",
+    "mixed": "混合市场",
+}
+MARKET_ANGLE_LABELS = {
+    "developer-tooling": "开发者工具",
+    "broad-demand": "广谱需求",
+    "search-demand": "搜索需求",
+    "traffic-asset": "流量资产",
+    "mixed-opportunity": "混合机会",
+}
 
 AGENT_LAYERS = [
     ["aic-captain"],
@@ -593,6 +605,14 @@ def format_score(value: float | None) -> str:
     if value is None:
         return "-"
     return f"{value:.2f}"
+
+
+def market_scope_label(value: str) -> str:
+    return MARKET_SCOPE_LABELS.get(value, value or "-")
+
+
+def market_angle_label(value: str) -> str:
+    return MARKET_ANGLE_LABELS.get(value, value or "-")
 
 
 def score_band(value: float | None) -> str:
@@ -1133,6 +1153,11 @@ def build_north_star_snapshot(state: dict) -> dict:
         risks.append(f"当前有 {len(ready_review)} 个 ready_review 机会待处理，若长期不晋升会延迟新现金流实验。")
     if not top_opportunities:
         risks.append("当前机会池里没有高置信的自养候选，探索质量需要继续提升。")
+    top_window = opportunities[:20]
+    dev_dominated = sum(1 for item in top_window if item.get("market_scope") == "developer")
+    broad_like = sum(1 for item in top_window if item.get("market_scope") == "broad")
+    if top_window and dev_dominated >= max(4, broad_like * 2):
+        risks.append("当前高分机会仍偏开发者语境，广谱需求和搜索意图机会占比不足。")
 
     return {
         "long_term_goal": "以最低可持续成本，持续发现、验证、构建、分发并变现可复利数字产品，覆盖团队 token、基础设施与维护成本。",
@@ -1141,6 +1166,13 @@ def build_north_star_snapshot(state: dict) -> dict:
         "secondary_task": secondary_task,
         "top_opportunities": top_opportunities,
         "risks": risks,
+    }
+
+
+def build_opportunity_focus_counts(opportunities: list[dict]) -> dict:
+    return {
+        "market_scope": Counter(str(item.get("market_scope", "unknown")) for item in opportunities),
+        "market_angle": Counter(str(item.get("market_angle", "unknown")) for item in opportunities),
     }
 
 
@@ -1487,6 +1519,7 @@ def assemble_state(
         "stale_active_tasks": stale_active_tasks,
         "opportunities": opportunities,
         "opportunity_counts": opportunity_counts,
+        "opportunity_focus_counts": build_opportunity_focus_counts(opportunities),
         "agents": agents,
         "cron_jobs": cron_jobs,
         "running_jobs": running_jobs,
@@ -1575,6 +1608,7 @@ def compute_state(config: AppConfig) -> dict:
         "stale_active_tasks": stale_active_tasks,
         "opportunities": opportunities,
         "opportunity_counts": opportunity_counts,
+        "opportunity_focus_counts": build_opportunity_focus_counts(opportunities),
         "agents": agents,
         "cron_jobs": cron_jobs,
         "running_jobs": running_jobs,
@@ -1814,6 +1848,9 @@ def render_summary(state: dict, message: str) -> bytes:
     north_star_risks = north_star.get("risks", [])
     experiments = state["experiments"]
     outcomes = state["outcomes"]
+    focus_counts = state.get("opportunity_focus_counts", {})
+    scope_counts = focus_counts.get("market_scope", Counter())
+    angle_counts = focus_counts.get("market_angle", Counter())
 
     runtime_jobs_value = str(len(running_jobs)) if runtime_ready else "加载中"
     runtime_never_run_value = str(len(never_run_core)) if runtime_ready else "加载中"
@@ -1833,6 +1870,8 @@ def render_summary(state: dict, message: str) -> bytes:
             card("内部系统产出", str(outcomes["closed_internal"]), "工具、脚本、回归与团队内能力"),
             card("对外产品产出", str(outcomes["closed_external"]), "产品方向、规格与对外交付候选"),
             card("实验有结果", str(outcomes["experiments_with_results"]), "已有真实经营验证结果的实验"),
+            card("广谱市场机会", str(scope_counts.get("broad", 0)), "不只停在开发者圈层"),
+            card("搜索需求机会", str(angle_counts.get("search-demand", 0)), "更接近 best/alternative/template/generator"),
         ]
     )
 
@@ -2230,9 +2269,18 @@ def render_tasks(state: dict, message: str) -> bytes:
 def render_opportunities(state: dict, message: str) -> bytes:
     query = state["query"]
     status_filter = query.get("status", [""])[0]
+    scope_filter = query.get("scope", [""])[0]
+    angle_filter = query.get("angle", [""])[0]
+    focus_counts = state.get("opportunity_focus_counts", {})
+    scope_counts = focus_counts.get("market_scope", Counter())
+    angle_counts = focus_counts.get("market_angle", Counter())
     rows = []
     for item in state["opportunities"][:50]:
         if status_filter and item.get("status") != status_filter:
+            continue
+        if scope_filter and item.get("market_scope") != scope_filter:
+            continue
+        if angle_filter and item.get("market_angle") != angle_filter:
             continue
         topic_ids = item.get("topic_ids", [])
         topic_text = ", ".join(topic_ids) if isinstance(topic_ids, list) and topic_ids else "-"
@@ -2252,6 +2300,8 @@ def render_opportunities(state: dict, message: str) -> bytes:
                 link(str(item.get("opportunity_id", "-")), "/opportunity?" + urlencode({"id": str(item.get("opportunity_id", ""))})),
                 f"<span class=\"pill\">{escape(item.get('status', '-'))}</span>",
                 escape(item.get("score", "-")),
+                escape(market_scope_label(str(item.get("market_scope", "-")))),
+                escape(market_angle_label(str(item.get("market_angle", "-")))),
                 " ".join(actions),
                 escape(topic_text),
                 escape(item.get("evidence_count", 0)),
@@ -2265,11 +2315,21 @@ def render_opportunities(state: dict, message: str) -> bytes:
       <h2>过滤</h2>
       <form method="get" action="/opportunities" class="actions">
         <input name="status" placeholder="status" value="{escape(status_filter)}">
+        <input name="scope" placeholder="scope" value="{escape(scope_filter)}">
+        <input name="angle" placeholder="angle" value="{escape(angle_filter)}">
         <button type="submit">过滤</button>
       </form>
     </div>
     """
-    body = filters + f"<div class=\"panel\"><h2>机会池</h2>{table(['Opportunity', 'Status', 'Score', 'Action', 'Topics', 'Evidence', 'Domains', 'Task', 'Summary'], rows)}</div>"
+    focus_cards = "".join(
+        [
+            card("广谱市场", str(scope_counts.get("broad", 0)), "更接近大众/广谱需求"),
+            card("开发者市场", str(scope_counts.get("developer", 0)), "仍停留在开发者语境"),
+            card("搜索需求", str(angle_counts.get("search-demand", 0)), "best/alternative/template/generator"),
+            card("流量资产", str(angle_counts.get("traffic-asset", 0)), "SEO/广告/目录型机会"),
+        ]
+    )
+    body = filters + f"<div class=\"grid\" style=\"margin-top:16px\">{focus_cards}</div><div class=\"panel\"><h2>机会池</h2>{table(['Opportunity', 'Status', 'Score', '市场范围', '机会类型', 'Action', 'Topics', 'Evidence', 'Domains', 'Task', 'Summary'], rows)}</div>"
     return layout("Opportunities", body, "/opportunities", message)
 
 
@@ -3378,6 +3438,8 @@ def render_opportunity_detail(state: dict, opportunity: dict, message: str) -> b
             ("market_signal_score", escape(opportunity.get("market_signal_score", "-"))),
             ("self_sustainability_score", escape(opportunity.get("self_sustainability_score", "-"))),
             ("north_star_alignment", escape(opportunity.get("north_star_alignment", "-"))),
+            ("market_scope", escape(market_scope_label(str(opportunity.get("market_scope", "-"))))),
+            ("market_angle", escape(market_angle_label(str(opportunity.get("market_angle", "-"))))),
             ("recommended_action", escape(opportunity.get("recommended_action", "-"))),
             ("task_id", task_link),
             ("topic_ids", escape(", ".join(opportunity.get("topic_ids", [])) if isinstance(opportunity.get("topic_ids"), list) else "-")),
