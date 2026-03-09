@@ -26,6 +26,31 @@ def find_first_match(evidence: list[str], marker: str) -> str | None:
     return None
 
 
+def task_tracks(task: dict[str, Any]) -> list[str]:
+    tags = task.get("tags")
+    if not isinstance(tags, list):
+        return []
+    result: list[str] = []
+    for item in tags:
+        if not isinstance(item, str) or not item.startswith("track:"):
+            continue
+        track = item.split(":", 1)[1].strip()
+        if track and track not in result:
+            result.append(track)
+    return result
+
+
+def task_note_value(task: dict[str, Any], prefix: str) -> str | None:
+    notes = task.get("notes")
+    if not isinstance(notes, list):
+        return None
+    for item in notes:
+        if not isinstance(item, str) or not item.startswith(prefix):
+            continue
+        return item.split("=", 1)[1].strip()
+    return None
+
+
 def build_packet(
     task: dict[str, Any],
     latest_handoff: str | None,
@@ -41,6 +66,9 @@ def build_packet(
     captain_handoffs: str,
 ) -> str:
     evidence = normalize_list(task.get("evidence_pointer"))
+    tracks = task_tracks(task)
+    self_score = task_note_value(task, "self_sustainability_score=")
+    business_model = task_note_value(task, "business_model=")
 
     lines = [
         "# Reflector Intake Packet",
@@ -56,11 +84,18 @@ def build_packet(
         f"- captain_registry: {captain_registry}",
         f"- captain_dashboard: {captain_dashboard}",
         f"- captain_handoffs: {captain_handoffs}",
+        f"- north_star_goal: 以最低可持续成本，持续发现、验证、构建、分发并变现可复利数字产品，覆盖团队 token、基础设施与维护成本",
         "",
         "## Control Plane",
         "- state_source: captain_registry",
         "- dashboard_role: derived_observer",
         "- conflict_rule: if captain_registry and captain_dashboard disagree, trust captain_registry and refresh dashboard after state changes",
+        "",
+        "## North Star Context",
+        f"- commercial_tracks: {', '.join(tracks) if tracks else 'none'}",
+        f"- self_sustainability_score: {self_score or 'unknown'}",
+        f"- business_model: {business_model or 'unknown'}",
+        "- required_question: 本次发布是否更接近自养目标？若没有，请明确指出缺失的是收入验证、分发验证、成本验证还是自动化适配验证。",
         "",
         "## Required Inputs",
         f"- verification_report: {verification_report}",

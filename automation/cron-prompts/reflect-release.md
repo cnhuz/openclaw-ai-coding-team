@@ -23,6 +23,8 @@
    - 本次交付是否符合原 spec
    - 哪些步骤顺畅，哪些步骤仍靠人工补位
    - 哪些经验值得沉淀为长期知识或流程修正
+   - 本次交付是否更接近自养目标；若更接近，具体靠近的是收入验证、分发验证、成本验证还是自动化适配验证
+   - 若没有更接近自养目标，明确指出当前缺失与止损条件
    - 必须包含一个 `## Observe Checks` 小节，并对 packet 中每个检查项按下面格式逐条回填：
      - `- check: <原始检查项>`
      - `  - result: pass|fail|n/a`
@@ -45,3 +47,4 @@
 - `validate_reflection_closeout.py` 未通过，不允许关闭任务
 - 不把 dashboard 当状态裁决面；状态、owner、blocker、next step 只认 `captain_registry`
 - 执行日志必须包含：`- Status: ok`、`- decision: closed`、`- task_id: ...`、`- reflection: ...`
+- 若 reflection 未明确回答“是否更接近自养目标”，视为复盘不完整
