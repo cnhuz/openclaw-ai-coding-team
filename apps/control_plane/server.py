@@ -1155,6 +1155,12 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
     .edge-strip {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }}
     .edge-node {{ padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }}
     .edge-node.hot {{ border-color: var(--accent); color: var(--text); }}
+    .topology-graph {{ overflow-x: auto; }}
+    .topology-svg {{ width: 100%; min-width: 1040px; height: auto; display: block; }}
+    .topology-note {{ margin-top: 8px; color: var(--muted); font-size: 12px; }}
+    .topology-legend {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }}
+    .legend-item {{ display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; }}
+    .legend-swatch {{ width: 12px; height: 12px; border-radius: 999px; display: inline-block; }}
     @media (max-width: 980px) {{
       .two, .three {{ grid-template-columns: 1fr; }}
       .form-grid {{ grid-template-columns: 1fr; }}
@@ -1460,6 +1466,24 @@ def render_opportunities(state: dict, message: str) -> bytes:
 
 def render_agents(state: dict, message: str) -> bytes:
     agent_stats = state["agent_stats"]
+    health_colors = {
+        "ok": "#73d13d",
+        "warn": "#f7c948",
+        "danger": "#ff7875",
+        "muted": "#8ea0c9",
+    }
+    node_positions = {
+        "aic-captain": (420, 36),
+        "aic-planner": (140, 182),
+        "aic-dispatcher": (420, 182),
+        "aic-reflector": (700, 182),
+        "aic-researcher": (20, 360),
+        "aic-reviewer": (220, 360),
+        "aic-builder": (420, 360),
+        "aic-tester": (620, 360),
+        "aic-releaser": (820, 360),
+        "aic-curator": (520, 540),
+    }
     layer_sections: list[str] = []
     for layer in AGENT_LAYERS:
         cards = []
@@ -1490,6 +1514,63 @@ def render_agents(state: dict, message: str) -> bytes:
                 """
             )
         layer_sections.append(f"<div class=\"topology-row\">{''.join(cards)}</div>")
+
+    edge_counts: dict[tuple[str, str], int] = {}
+    for item in state["recent_handoffs"]:
+        sender = item.get("sender")
+        recipient = item.get("recipient")
+        if sender in AGENT_META and recipient in AGENT_META:
+            edge_counts[(sender, recipient)] = edge_counts.get((sender, recipient), 0) + 1
+
+    edge_svg_parts: list[str] = []
+    edge_label_parts: list[str] = []
+    for caller, callees in CALL_GRAPH:
+        x1, y1 = node_positions[caller]
+        start_x = x1 + 90
+        start_y = y1 + 34
+        for callee in callees:
+            x2, y2 = node_positions[callee]
+            end_x = x2 + 90
+            end_y = y2
+            count = edge_counts.get((caller, callee), 0)
+            active = count > 0
+            stroke = "#6ea8fe" if active else "#31456f"
+            width = 4 if active else 2
+            dash = "" if active else ' stroke-dasharray="8 6"'
+            edge_svg_parts.append(
+                f'<line x1="{start_x}" y1="{start_y}" x2="{end_x}" y2="{end_y}" stroke="{stroke}" stroke-width="{width}" marker-end="url(#arrow)" opacity="0.95"{dash} />'
+            )
+            if active:
+                label_x = round((start_x + end_x) / 2)
+                label_y = round((start_y + end_y) / 2) - 10
+                edge_label_parts.append(
+                    f'<g><rect x="{label_x - 12}" y="{label_y - 14}" width="24" height="18" rx="9" fill="#162443" stroke="{stroke}" />'
+                    f'<text x="{label_x}" y="{label_y - 1}" text-anchor="middle" font-size="11" fill="#ecf2ff">{count}</text></g>'
+                )
+
+    node_svg_parts: list[str] = []
+    for agent_id in AGENT_META:
+        stats = agent_stats[agent_id]
+        health_class, health_label = agent_health(stats)
+        fill = "#0f1832"
+        stroke = health_colors[health_class]
+        x, y = node_positions[agent_id]
+        active_count = len(stats["active_tasks"])
+        runtime_text = f"{stats['sessions']}会话 / {stats['running_jobs']}任务流"
+        task_text = f"{active_count}任务 / {stats['failed_jobs']}失败"
+        node_svg_parts.append(
+            f'''
+            <g>
+              <rect x="{x}" y="{y}" width="180" height="88" rx="16" fill="{fill}" stroke="{stroke}" stroke-width="2.5" />
+              <text x="{x + 16}" y="{y + 24}" font-size="16" font-weight="700" fill="#ecf2ff">{escape(agent_name(agent_id))}</text>
+              <text x="{x + 16}" y="{y + 42}" font-size="11" fill="#8ea0c9">{escape(agent_title(agent_id))}</text>
+              <text x="{x + 16}" y="{y + 62}" font-size="11" fill="#d3e1ff">{escape(runtime_text)}</text>
+              <text x="{x + 16}" y="{y + 79}" font-size="11" fill="#d3e1ff">{escape(task_text)}</text>
+              <circle cx="{x + 158}" cy="{y + 20}" r="8" fill="{stroke}" />
+              <text x="{x + 158}" y="{y + 24}" text-anchor="middle" font-size="9" font-weight="700" fill="#0b1020">{escape(health_label[:1])}</text>
+            </g>
+            '''
+        )
 
     relation_rows = []
     recent_edges = {(item.get("sender"), item.get("recipient")) for item in state["recent_handoffs"]}
@@ -1543,11 +1624,34 @@ def render_agents(state: dict, message: str) -> bytes:
             ]
         )
 
+    topology_graph = f"""
+    <div class="topology-graph">
+      <svg class="topology-svg" viewBox="0 0 1020 650" role="img" aria-label="AI Coding Team 拓扑图">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#6ea8fe"></path>
+          </marker>
+        </defs>
+        {''.join(edge_svg_parts)}
+        {''.join(edge_label_parts)}
+        {''.join(node_svg_parts)}
+      </svg>
+    </div>
+    <div class="topology-legend">
+      <div class="legend-item"><span class="legend-swatch" style="background:#73d13d"></span>推进中</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#f7c948"></span>活跃或待关注</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#ff7875"></span>告警</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#31456f"></span>静态关系</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#6ea8fe"></span>最近有真实交接</div>
+    </div>
+    <div class="topology-note">连线数字表示最近交接次数；虚线表示制度层静态调度关系，亮线表示最近真实流转。</div>
+    """
+
     body = f"""
     <div class="panel">
       <h2>团队拓扑</h2>
       <div class="muted">这里按中文角色名展示团队结构；静态关系来自 `AGENT_GRAPH.md`，动态高亮来自最近 handoff 与运行态。</div>
-      <div class="topology-layer">{''.join(layer_sections)}</div>
+      {topology_graph}
     </div>
     <div class="row two">
       <div class="panel">
@@ -1558,6 +1662,10 @@ def render_agents(state: dict, message: str) -> bytes:
         <h2>当前主线路径</h2>
         {table(['Task', 'State', '上一步', '当前负责人', '下一站', 'Updated', 'Next Step'], path_rows)}
       </div>
+    </div>
+    <div class="panel">
+      <h2>角色卡片</h2>
+      <div class="topology-layer">{''.join(layer_sections)}</div>
     </div>
     <div class="panel">
       <h2>团队角色总览</h2>
