@@ -63,6 +63,7 @@ http://127.0.0.1:8765
 - `/opportunities`：机会池
 - `/experiments`：商业化实验面板
 - `/experiment?id=...`：单条实验记录详情与更新
+- `/team-factory`：新增/退役 agent 的可视化团队工厂，支持 dry-run 与 apply
 - `/kpi`：Daily / Weekly KPI
 - `/agents`：团队拓扑、角色状态与产出总览
 - `/agent?id=...`：单角色详情（收到 / 推进 / 终结 / 返工 / 当前持有）
@@ -79,6 +80,7 @@ http://127.0.0.1:8765
 - 刷新 captain dashboard
 - 手动触发 cron
 - 手动晋升 `ready_review` 机会
+- 预演或执行新增/退役 agent
 - 更新任务的 `state / owner / priority / next_step / blocker`
 - 手动触发 `daily-kpi` / `weekly-kpi`
 - 首页与实验页会优先展示哪些任务/机会更接近自养目标，以及对应的分发路径、成功指标和止损条件
@@ -95,6 +97,7 @@ http://127.0.0.1:8765
 - `/api/opportunity?id=...`
 - `/api/experiments`
 - `/api/experiment?id=...`
+- `/api/team-factory`
 - `/api/agents`
 - `/api/agent?id=...`
 - `/api/events`

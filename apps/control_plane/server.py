@@ -66,6 +66,7 @@ AGENT_META = {
     "aic-reflector": {"name": "反思官", "title": "复盘与流程修正", "lane": "复盘层"},
     "aic-curator": {"name": "典藏官", "title": "知识沉淀与归档", "lane": "复盘层"},
 }
+PROTECTED_AGENT_IDS = {"main", "aic-captain"}
 
 TRACK_LABELS = {
     "cashflow": "现金流",
@@ -143,6 +144,8 @@ STATE_CACHE: dict[str, tuple[float, dict]] = {}
 CACHE_PREWARM_INTERVAL_SECONDS = 20.0
 CACHE_LOCK = threading.Lock()
 STATE_REFRESHING: set[str] = set()
+TEAM_FACTORY_PREVIEWS: dict[str, dict[str, object]] = {}
+TEAM_FACTORY_PREVIEW_TTL_SECONDS = 1800.0
 
 
 @dataclass(frozen=True)
@@ -174,6 +177,10 @@ class AppConfig:
     @property
     def handoffs_dir(self) -> Path:
         return self.captain_workspace / "handoffs"
+
+    @property
+    def openclaw_config_path(self) -> Path:
+        return self.openclaw_home / "openclaw.json"
 
     @property
     def opportunities_path(self) -> Path:
@@ -241,6 +248,18 @@ class AppConfig:
             str(self.skills_root),
             "--output",
             str(self.dashboard_path),
+        ]
+
+    def team_factory_command(self) -> list[str]:
+        return [
+            "python3",
+            str(self.captain_workspace / "scripts/manage_team_agent.py"),
+            "--openclaw-home",
+            str(self.openclaw_home),
+            "--config-path",
+            str(self.openclaw_config_path),
+            "--format",
+            "md",
         ]
 
 
@@ -347,8 +366,8 @@ def invalidate_state_cache(cache_key: str | None = None) -> None:
         STATE_CACHE.pop(cache_key, None)
 
 
-def run_command(command: list[str]) -> dict[str, object]:
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+def run_command(command: list[str], cwd: Path | None = None) -> dict[str, object]:
+    result = subprocess.run(command, capture_output=True, text=True, check=False, cwd=str(cwd) if cwd else None)
     return {
         "ok": result.returncode == 0,
         "returncode": result.returncode,
@@ -356,6 +375,43 @@ def run_command(command: list[str]) -> dict[str, object]:
         "stderr": result.stderr.strip(),
         "command": command,
     }
+
+
+def split_form_values(raw: str) -> list[str]:
+    items: list[str] = []
+    for line in raw.replace(",", "\n").splitlines():
+        value = line.strip()
+        if value:
+            items.append(value)
+    return items
+
+
+def store_team_factory_preview(kind: str, mode: str, result: dict[str, object]) -> str:
+    preview_id = str(time.time_ns())
+    TEAM_FACTORY_PREVIEWS[preview_id] = {
+        "kind": kind,
+        "mode": mode,
+        "stored_at": time.time(),
+        "result": result,
+    }
+    stale_keys = [
+        key
+        for key, item in TEAM_FACTORY_PREVIEWS.items()
+        if time.time() - float(item.get("stored_at", 0.0)) > TEAM_FACTORY_PREVIEW_TTL_SECONDS
+    ]
+    for key in stale_keys:
+        TEAM_FACTORY_PREVIEWS.pop(key, None)
+    return preview_id
+
+
+def get_team_factory_preview(preview_id: str) -> dict[str, object] | None:
+    item = TEAM_FACTORY_PREVIEWS.get(preview_id)
+    if item is None:
+        return None
+    if time.time() - float(item.get("stored_at", 0.0)) > TEAM_FACTORY_PREVIEW_TTL_SECONDS:
+        TEAM_FACTORY_PREVIEWS.pop(preview_id, None)
+        return None
+    return item
 
 
 def has_blocker(task: dict) -> bool:
@@ -1623,6 +1679,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
         ("任务", "/tasks"),
         ("机会池", "/opportunities"),
         ("实验", "/experiments"),
+        ("团队工厂", "/team-factory"),
         ("KPI", "/kpi"),
         ("事件流", "/events"),
         ("Handoffs", "/handoffs"),
@@ -2682,6 +2739,13 @@ def render_agents(state: dict, message: str) -> bytes:
 
     body = f"""
     <div class="panel">
+      <h2>团队工厂</h2>
+      <div class="actions">
+        <a href="/team-factory">进入团队工厂</a>
+      </div>
+      <div class="muted">用于新增/退役全功能 agent，并同步 runtime `openclaw.json`、allowAgents、cron 和 qmd 初始化。</div>
+    </div>
+    <div class="panel">
       <h2>团队拓扑</h2>
       <div class="muted">这里按中文角色名展示团队结构；静态关系来自 `AGENT_GRAPH.md`，动态高亮来自最近 handoff 与运行态。</div>
       {topology_graph}
@@ -2751,6 +2815,9 @@ def render_agent_detail(state: dict, agent_id: str, message: str) -> bytes:
     <div class="panel">
       <h2>{escape(agent_name(agent_id))} / {escape(agent_title(agent_id))}</h2>
       <div class="muted">角色 ID: {escape(agent_id)} · 当前状态: {escape(health_label)}</div>
+      <div class="actions" style="margin-top:12px;">
+        {"<span class=\"muted\">核心角色，不允许退役</span>" if agent_id in PROTECTED_AGENT_IDS else f'<a href="/team-factory?retire_agent_id={escape(agent_id)}">退役预演</a>'}
+      </div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">收到任务</div><div class="stat-value">{escape(len(stats['received_task_ids']))}</div></div>
         <div class="stat-card"><div class="stat-label">推进任务</div><div class="stat-value">{escape(len(stats['pushed_task_ids']))}</div></div>
@@ -2804,6 +2871,181 @@ def render_agent_detail(state: dict, agent_id: str, message: str) -> bytes:
     </div>
     """
     return layout(f"{agent_name(agent_id)}", body, "/agents", message)
+
+
+def render_team_factory(state: dict, message: str) -> bytes:
+    config: AppConfig = state["config"]
+    query = state["query"]
+    preview_id = query.get("preview", [""])[0]
+    retire_agent_id = query.get("retire_agent_id", [""])[0]
+    preview = get_team_factory_preview(preview_id) if preview_id else None
+
+    runtime_config = load_json(config.openclaw_config_path, {})
+    config_agents = []
+    if isinstance(runtime_config, dict):
+        agents_obj = runtime_config.get("agents")
+        if isinstance(agents_obj, dict):
+            raw_list = agents_obj.get("list")
+            if isinstance(raw_list, list):
+                config_agents = [item for item in raw_list if isinstance(item, dict)]
+
+    current_rows = []
+    for item in config_agents:
+        agent_id = str(item.get("id", "-"))
+        stats = state["agent_stats"].get(agent_id)
+        allow_call = []
+        subagents = item.get("subagents")
+        if isinstance(subagents, dict):
+            raw_allow = subagents.get("allowAgents")
+            if isinstance(raw_allow, list):
+                allow_call = [str(value) for value in raw_allow]
+        heartbeat = ""
+        raw_heartbeat = item.get("heartbeat")
+        if isinstance(raw_heartbeat, dict):
+            heartbeat = str(raw_heartbeat.get("every", ""))
+        action_cell = "<span class=\"muted\">核心角色</span>" if agent_id in PROTECTED_AGENT_IDS else link("退役预演", "/team-factory?" + urlencode({"retire_agent_id": agent_id}))
+        current_rows.append(
+            [
+                escape(agent_name(agent_id)),
+                escape(agent_id),
+                escape(agent_title(agent_id)),
+                escape(heartbeat or "-"),
+                escape("、".join(agent_name(value) if value in AGENT_META else value for value in allow_call) if allow_call else "-"),
+                escape(len(stats["active_tasks"]) if stats else 0),
+                action_cell,
+            ]
+        )
+
+    preview_panel = ""
+    if preview is not None:
+        result = preview.get("result", {})
+        result_text = ""
+        if isinstance(result, dict):
+            stdout = str(result.get("stdout", "")).strip()
+            stderr = str(result.get("stderr", "")).strip()
+            result_text = stdout or stderr or json.dumps(result, ensure_ascii=False, indent=2)
+        preview_panel = f"""
+        <div class="panel">
+          <h2>最近预演结果</h2>
+          <div class="muted">类型：{escape(str(preview.get('kind', '-')))} · 模式：{escape(str(preview.get('mode', '-')))}</div>
+          <pre style="white-space:pre-wrap;overflow:auto;margin-top:12px;">{escape(result_text)}</pre>
+        </div>
+        """
+
+    add_form = f"""
+    <div class="panel">
+      <h2>新增 Agent</h2>
+      <form method="post" action="/actions/team-factory-add">
+        <input type="hidden" name="next" value="/team-factory">
+        <div class="form-grid">
+          <div>
+            <label>Agent ID</label>
+            {input_html("agent_id", "", "例如：aic-growth")}
+          </div>
+          <div>
+            <label>中文角色名</label>
+            {input_html("role_name", "", "例如：增长官")}
+          </div>
+          <div>
+            <label>角色标题</label>
+            {input_html("role_title", "", "例如：分发与增长实验")}
+          </div>
+          <div>
+            <label>Identity Name</label>
+            {input_html("identity_name", "", "默认与角色名一致")}
+          </div>
+          <div>
+            <label>Emoji</label>
+            {input_html("emoji", "🧩", "例如：📈")}
+          </div>
+          <div>
+            <label>Heartbeat</label>
+            {input_html("heartbeat_every", "", "例如：1h")}
+          </div>
+          <div class="full">
+            <label>Mission</label>
+            {textarea_html("mission", "", "一句话说明这个 agent 为什么存在", 2)}
+          </div>
+          <div class="full">
+            <label>Accepted From</label>
+            {textarea_html("accepted_from", "aic-captain", "每行一个上游 agent_id", 3)}
+          </div>
+          <div class="full">
+            <label>Allow Call</label>
+            {textarea_html("allow_call", "", "每行一个下游 agent_id", 3)}
+          </div>
+          <div class="full">
+            <label>Core Responsibilities</label>
+            {textarea_html("core_responsibilities", "", "每行一条", 4)}
+          </div>
+          <div class="full">
+            <label>Inputs</label>
+            {textarea_html("inputs", "", "每行一条", 3)}
+          </div>
+          <div class="full">
+            <label>Outputs</label>
+            {textarea_html("outputs", "", "每行一条", 3)}
+          </div>
+          <div class="full">
+            <label>Boundaries</label>
+            {textarea_html("boundaries", "", "每行一条", 3)}
+          </div>
+          <div class="full">
+            <label>Memory Focus</label>
+            {textarea_html("memory_focus", "", "每行一条", 3)}
+          </div>
+          <div class="full">
+            <label>Reflection Focus</label>
+            {textarea_html("reflection_focus", "", "每行一条", 3)}
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button type="submit" name="mode" value="dry-run">预演新增</button>
+          <button type="submit" name="mode" value="apply">执行新增</button>
+        </div>
+      </form>
+    </div>
+    """
+
+    retire_form = f"""
+    <div class="panel">
+      <h2>退役 Agent</h2>
+      <form method="post" action="/actions/team-factory-retire">
+        <input type="hidden" name="next" value="/team-factory">
+        <div class="form-grid">
+          <div>
+            <label>Agent ID</label>
+            {input_html("agent_id", retire_agent_id, "例如：aic-growth")}
+          </div>
+          <div>
+            <label>Reassign Active Tasks To</label>
+            {select_html("reassign_active_tasks_to", OWNER_OPTIONS, "aic-captain")}
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button type="submit" name="mode" value="dry-run">预演退役</button>
+          <button type="submit" name="mode" value="apply">执行退役</button>
+        </div>
+      </form>
+    </div>
+    """
+
+    body = f"""
+    <div class="panel">
+      <h2>团队工厂</h2>
+      <div class="muted">这里直接调 captain workspace 中的 `manage_team_agent.py`。所有拓扑变更都建议先 dry-run，再 apply。</div>
+    </div>
+    {preview_panel}
+    <div class="row two">
+      {add_form}
+      {retire_form}
+    </div>
+    <div class="panel">
+      <h2>当前团队配置</h2>
+      {table(['中文名', 'Agent ID', '职责', 'Heartbeat', 'Allow Call', '当前持有', '动作'], current_rows)}
+    </div>
+    """
+    return layout("Team Factory", body, "/team-factory", message)
 
 
 def render_handoffs(state: dict, message: str) -> bytes:
@@ -3265,6 +3507,9 @@ def build_handler(config: AppConfig):
             if parsed.path == "/experiments":
                 html_response(self, render_experiments(state, message))
                 return
+            if parsed.path == "/team-factory":
+                html_response(self, render_team_factory(state, message))
+                return
             if parsed.path == "/experiment":
                 experiment_id = query.get("id", [""])[0]
                 experiment = find_experiment_record(state["experiment_records"], experiment_id)
@@ -3361,6 +3606,16 @@ def build_handler(config: AppConfig):
                 return
             if parsed.path == "/api/experiments":
                 json_response(self, state["experiments"])
+                return
+            if parsed.path == "/api/team-factory":
+                runtime_config = load_json(config.openclaw_config_path, {})
+                payload = {
+                    "config_path": str(config.openclaw_config_path),
+                    "skills_root": str(config.openclaw_home / "skills"),
+                    "managed_skill_present": (config.openclaw_home / "skills/team-agent-factory/SKILL.md").exists(),
+                    "agents": runtime_config.get("agents", {}).get("list", []) if isinstance(runtime_config, dict) else [],
+                }
+                json_response(self, payload)
                 return
             if parsed.path == "/api/experiment":
                 experiment_id = query.get("id", [""])[0]
@@ -3676,6 +3931,76 @@ def build_handler(config: AppConfig):
                 invalidate_state_cache()
                 message = result["stdout"] or result["stderr"] or f"experiment updated: {experiment_id}"
                 redirect_with_message(self, next_location, str(message))
+                return
+
+            if parsed.path == "/actions/team-factory-add":
+                mode = form.get("mode", ["dry-run"])[0].strip() or "dry-run"
+                agent_id = form.get("agent_id", [""])[0].strip()
+                role_name = form.get("role_name", [""])[0].strip()
+                role_title = form.get("role_title", [""])[0].strip()
+                mission = form.get("mission", [""])[0].strip()
+                if not agent_id or not role_name or not role_title or not mission:
+                    redirect_with_message(self, next_location, "missing required add fields")
+                    return
+                command = config.team_factory_command()
+                if mode == "dry-run":
+                    command.append("--dry-run")
+                command.extend(["add", "--agent-id", agent_id, "--role-name", role_name, "--role-title", role_title, "--mission", mission])
+                for field_name, flag in [
+                    ("identity_name", "--identity-name"),
+                    ("emoji", "--emoji"),
+                    ("heartbeat_every", "--heartbeat-every"),
+                ]:
+                    value = form.get(field_name, [""])[0].strip()
+                    if value:
+                        command.extend([flag, value])
+                for field_name, flag in [
+                    ("accepted_from", "--accepted-from"),
+                    ("allow_call", "--allow-call"),
+                    ("core_responsibilities", "--core-responsibility"),
+                    ("inputs", "--input"),
+                    ("outputs", "--output"),
+                    ("boundaries", "--boundary"),
+                    ("memory_focus", "--memory-focus"),
+                    ("reflection_focus", "--reflection-focus"),
+                ]:
+                    for value in split_form_values(form.get(field_name, [""])[0]):
+                        command.extend([flag, value])
+                result = run_command(command, cwd=config.captain_workspace)
+                invalidate_command_cache()
+                invalidate_state_cache()
+                preview_id = store_team_factory_preview("add", mode, result)
+                if mode == "apply" and result["ok"]:
+                    run_command(config.refresh_dashboard_command(), cwd=config.captain_workspace)
+                    invalidate_command_cache()
+                    invalidate_state_cache()
+                summary = "新增预演完成" if mode == "dry-run" else ("新增完成" if result["ok"] else "新增失败")
+                redirect_with_message(self, f"/team-factory?preview={preview_id}", summary)
+                return
+
+            if parsed.path == "/actions/team-factory-retire":
+                mode = form.get("mode", ["dry-run"])[0].strip() or "dry-run"
+                agent_id = form.get("agent_id", [""])[0].strip()
+                if not agent_id:
+                    redirect_with_message(self, next_location, "missing agent id")
+                    return
+                command = config.team_factory_command()
+                if mode == "dry-run":
+                    command.append("--dry-run")
+                command.extend(["retire", "--agent-id", agent_id])
+                reassign_to = form.get("reassign_active_tasks_to", [""])[0].strip()
+                if reassign_to:
+                    command.extend(["--reassign-active-tasks-to", reassign_to])
+                result = run_command(command, cwd=config.captain_workspace)
+                invalidate_command_cache()
+                invalidate_state_cache()
+                preview_id = store_team_factory_preview("retire", mode, result)
+                if mode == "apply" and result["ok"]:
+                    run_command(config.refresh_dashboard_command(), cwd=config.captain_workspace)
+                    invalidate_command_cache()
+                    invalidate_state_cache()
+                summary = "退役预演完成" if mode == "dry-run" else ("退役完成" if result["ok"] else "退役失败")
+                redirect_with_message(self, f"/team-factory?preview={preview_id}&retire_agent_id={agent_id}", summary)
                 return
 
             json_response(self, {"ok": False, "error": "not found"}, HTTPStatus.NOT_FOUND)
