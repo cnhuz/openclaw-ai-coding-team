@@ -30,6 +30,83 @@ TRACK_LABELS = {
     "compound_asset": "复利资产",
 }
 
+DEV_HEAVY_SOURCE_IDS = {"github-trending", "hacker-news", "lobsters", "juejin"}
+BREADTH_SIGNAL_SOURCE_IDS = {"reddit-public", "x-public", "buyer-intent-web", "emergent-public-web", "indie-hackers", "news-and-analysis", "v2ex"}
+BROAD_MARKET_TOPICS = {"broad-demand-pools", "search-intent-demand", "payment-intent", "distribution-leverage"}
+SEARCH_INTENT_TERMS = [
+    "best",
+    "alternative",
+    "alternatives",
+    "review",
+    "pricing",
+    "price",
+    "worth it",
+    "template",
+    "generator",
+    "calculator",
+    "download",
+    "compare",
+    "对比",
+    "模板",
+    "生成器",
+    "计算器",
+    "下载",
+    "定价",
+    "付费",
+]
+DEV_KEYWORDS = [
+    "github",
+    "copilot",
+    "jira",
+    "pull request",
+    "pr review",
+    "repo",
+    "sdk",
+    "cli",
+    "developer workflow",
+    "ai coding",
+    "multi-agent coding",
+    "code review",
+    "agentic workflow",
+]
+BROAD_AUDIENCE_TERMS = [
+    "parent",
+    "parents",
+    "student",
+    "students",
+    "creator",
+    "creators",
+    "small business",
+    "small businesses",
+    "seller",
+    "sellers",
+    "job seeker",
+    "resume",
+    "interview",
+    "teacher",
+    "teachers",
+    "家长",
+    "学生",
+    "创作者",
+    "小商家",
+    "卖家",
+    "求职",
+    "简历",
+    "面试",
+    "老师",
+]
+SERVICE_HEAVY_TERMS = [
+    "consulting",
+    "agency",
+    "implementation service",
+    "enterprise rollout",
+    "定制开发",
+    "定制",
+    "1对1",
+    "高客服",
+    "重服务",
+]
+
 
 def now_iso() -> str:
     return datetime.now().astimezone().replace(microsecond=0).isoformat()
@@ -188,17 +265,15 @@ def topic_weight(topic_ids: list[str], profiles: dict[str, dict[str, Any]]) -> f
 
 def infer_tracks(topic_ids: list[str], source_ids: list[str]) -> list[str]:
     tracks: list[str] = []
-    if "payment-intent" in topic_ids or "user-pain-demand" in topic_ids:
+    if any(topic_id_value in {"payment-intent", "user-pain-demand", "broad-demand-pools", "search-intent-demand"} for topic_id_value in topic_ids):
         tracks.append("cashflow")
     if "distribution-leverage" in topic_ids:
         tracks.extend(["ads", "compound_asset"])
-    if "technical-enablers" in topic_ids or "community-trends" in topic_ids:
+    if "technical-enablers" in topic_ids or ("community-trends" in topic_ids and not any(topic_id_value in BROAD_MARKET_TOPICS for topic_id_value in topic_ids)):
         tracks.append("oss_influence")
     if "automation-fit" in topic_ids or "unit-economics" in topic_ids:
         tracks.append("compound_asset")
-    if any(source_id in {"github-trending", "hacker-news", "lobsters"} for source_id in source_ids):
-        tracks.append("oss_influence")
-    if any(source_id in {"product-hunt", "x-public", "medium-devto"} for source_id in source_ids):
+    if any(source_id in {"buyer-intent-web", "product-hunt", "indie-hackers"} for source_id in source_ids):
         tracks.append("cashflow")
     result: list[str] = []
     seen: set[str] = set()
@@ -233,31 +308,59 @@ def contains_any(text: str, values: list[str]) -> bool:
     return any(item in text for item in values)
 
 
+def is_dev_heavy(source_ids: list[str], text: str) -> bool:
+    if source_ids and set(source_ids).issubset(DEV_HEAVY_SOURCE_IDS) and contains_any(text, DEV_KEYWORDS):
+        return True
+    return False
+
+
+def is_broad_market(topic_ids: list[str], source_ids: list[str], text: str) -> bool:
+    if any(topic_id_value in BROAD_MARKET_TOPICS for topic_id_value in topic_ids):
+        return True
+    if any(source_id in BREADTH_SIGNAL_SOURCE_IDS for source_id in source_ids) and contains_any(text, BROAD_AUDIENCE_TERMS + SEARCH_INTENT_TERMS):
+        return True
+    if contains_any(text, BROAD_AUDIENCE_TERMS):
+        return True
+    return False
+
+
 def monetization_score(topic_ids: list[str], source_ids: list[str], text: str, has_official_source: bool) -> float:
-    score = 0.42
+    score = 0.4
     if "payment-intent" in topic_ids:
         score += 0.24
-    if "user-pain-demand" in topic_ids:
-        score += 0.16
-    if contains_any(text, ["pricing", "price", "subscription", "付费", "定价", "购买", "订阅"]):
+    if "search-intent-demand" in topic_ids:
+        score += 0.18
+    if "broad-demand-pools" in topic_ids:
         score += 0.12
-    if "product-hunt" in source_ids:
+    if "user-pain-demand" in topic_ids:
+        score += 0.12
+    if contains_any(text, ["pricing", "price", "subscription", "付费", "定价", "购买", "订阅", "worth it", "template", "generator", "calculator"]):
+        score += 0.12
+    if any(source_id in {"buyer-intent-web", "product-hunt", "indie-hackers"} for source_id in source_ids):
         score += 0.06
     if has_official_source:
         score += 0.05
-    if contains_any(text, ["consulting", "agency", "1对1", "定制开发", "implementation service"]):
+    if contains_any(text, BROAD_AUDIENCE_TERMS):
+        score += 0.05
+    if contains_any(text, SERVICE_HEAVY_TERMS):
         score -= 0.18
+    if is_dev_heavy(source_ids, text) and not any(topic_id_value in {"payment-intent", "search-intent-demand"} for topic_id_value in topic_ids):
+        score -= 0.08
     return clamp(score)
 
 
 def distribution_score(topic_ids: list[str], source_ids: list[str], text: str) -> float:
-    score = 0.4
+    score = 0.42
     if "distribution-leverage" in topic_ids:
         score += 0.25
-    if any(source_id in {"github-trending", "hacker-news", "reddit-public", "x-public", "product-hunt", "v2ex", "medium-devto"} for source_id in source_ids):
+    if "search-intent-demand" in topic_ids:
+        score += 0.16
+    if any(source_id in {"reddit-public", "x-public", "product-hunt", "v2ex", "medium-devto", "buyer-intent-web", "emergent-public-web", "indie-hackers"} for source_id in source_ids):
         score += 0.12
-    if contains_any(text, ["seo", "github", "开源", "目录", "搜索", "product hunt", "reddit", "hacker news"]):
+    if contains_any(text, ["seo", "目录", "搜索", "product hunt", "reddit", "x.com", "template", "generator", "calculator", "download", "landing page", "着陆页"]):
         score += 0.1
+    if is_dev_heavy(source_ids, text):
+        score -= 0.08
     return clamp(score)
 
 
@@ -266,10 +369,10 @@ def automation_fit_score(topic_ids: list[str], text: str) -> float:
     if "automation-fit" in topic_ids:
         score += 0.25
     if "technical-enablers" in topic_ids:
-        score += 0.14
-    if contains_any(text, ["workflow", "tool", "template", "automation", "agent", "api", "工具", "工作流", "模板"]):
+        score += 0.08
+    if contains_any(text, ["workflow", "tool", "template", "automation", "generator", "calculator", "checklist", "tracker", "report", "工具", "模板", "生成器", "计算器"]):
         score += 0.1
-    if contains_any(text, ["consulting", "agency", "1对1", "定制", "高客服", "onboarding-heavy"]):
+    if contains_any(text, SERVICE_HEAVY_TERMS + ["onboarding-heavy"]):
         score -= 0.2
     return clamp(score)
 
@@ -280,14 +383,18 @@ def unit_economics_score(topic_ids: list[str], text: str) -> float:
         score += 0.25
     if "automation-fit" in topic_ids:
         score += 0.1
-    if contains_any(text, ["low-touch", "self-serve", "低维护", "自助", "低价", "广谱"]):
+    if contains_any(text, ["low-touch", "self-serve", "低维护", "自助", "低价", "广谱", "template", "generator", "calculator", "ads", "affiliate"]):
         score += 0.1
-    if contains_any(text, ["consulting", "定制", "service", "implementation", "enterprise rollout"]):
+    if contains_any(text, SERVICE_HEAVY_TERMS + ["service", "implementation"]):
         score -= 0.2
     return clamp(score)
 
 
 def derive_business_model(tracks: list[str], topic_ids: list[str], text: str) -> str:
+    if "search-intent-demand" in topic_ids or contains_any(text, ["template", "generator", "calculator", "download", "模板", "生成器", "计算器"]):
+        return "搜索意图驱动的小工具/模板/生成器，优先 SEO + 自助付费或免费入口转付费"
+    if "broad-demand-pools" in topic_ids and "cashflow" in tracks:
+        return "面向广谱用户的低价微产品，优先一次性小额付费或轻量订阅"
     if "ads" in tracks or "distribution-leverage" in topic_ids:
         return "SEO / 内容流量驱动的小网站，辅以广告、affiliate 或导流变现"
     if "oss_influence" in tracks and ("technical-enablers" in topic_ids or "开源" in text or "github" in text):
@@ -299,13 +406,15 @@ def derive_business_model(tracks: list[str], topic_ids: list[str], text: str) ->
 
 def derive_distribution_paths(tracks: list[str], source_ids: list[str], topic_ids: list[str]) -> list[str]:
     paths: list[str] = []
+    if "search-intent-demand" in topic_ids:
+        paths.append("SEO / 搜索意图页")
     if "ads" in tracks or "distribution-leverage" in topic_ids:
         paths.append("SEO / 搜索流量")
     if any(source_id in {"github-trending", "hacker-news", "lobsters"} for source_id in source_ids):
         paths.append("开源社区 / 开发者社区")
-    if any(source_id in {"product-hunt", "x-public", "medium-devto"} for source_id in source_ids):
+    if any(source_id in {"product-hunt", "x-public", "medium-devto", "indie-hackers"} for source_id in source_ids):
         paths.append("产品社区 / 社媒传播")
-    if any(source_id in {"reddit-public", "v2ex"} for source_id in source_ids):
+    if any(source_id in {"reddit-public", "v2ex", "buyer-intent-web", "emergent-public-web"} for source_id in source_ids):
         paths.append("论坛口碑 / 社区讨论")
     result: list[str] = []
     seen: set[str] = set()
@@ -354,6 +463,10 @@ def derive_automation_assessment(automation_score: float, text: str) -> str:
 
 
 def derive_payment_hypothesis(tracks: list[str], text: str) -> str:
+    if contains_any(text, ["template", "generator", "calculator", "download", "模板", "生成器", "计算器"]):
+        return "用户会为明确节省时间的模板、生成器或计算器类产品付费，或先被免费流量吸引再转付费。"
+    if contains_any(text, BROAD_AUDIENCE_TERMS):
+        return "只要结果明确、省时显著、价格足够低，广谱用户愿意为高频小工具付费。"
     if "cashflow" in tracks:
         return "用户愿意为节省时间、减少往返、直接提高结果的工具型价值付费。"
     if "ads" in tracks:
@@ -381,6 +494,26 @@ def derive_alignment_label(value: float) -> str:
     if value >= 0.5:
         return "medium"
     return "low"
+
+
+def derive_market_scope(topic_ids: list[str], source_ids: list[str], text: str) -> str:
+    if is_broad_market(topic_ids, source_ids, text):
+        return "broad"
+    if is_dev_heavy(source_ids, text):
+        return "developer"
+    return "mixed"
+
+
+def derive_market_angle(topic_ids: list[str], source_ids: list[str], text: str, tracks: list[str]) -> str:
+    if "search-intent-demand" in topic_ids or contains_any(text, SEARCH_INTENT_TERMS):
+        return "search-demand"
+    if "broad-demand-pools" in topic_ids or contains_any(text, BROAD_AUDIENCE_TERMS):
+        return "broad-demand"
+    if "ads" in tracks or "distribution-leverage" in topic_ids:
+        return "traffic-asset"
+    if is_dev_heavy(source_ids, text):
+        return "developer-tooling"
+    return "mixed-opportunity"
 
 
 def derive_priority(score: float) -> str:
@@ -504,19 +637,7 @@ def update_topic_profiles(path: Path, data: dict[str, Any], signals: list[dict[s
     for topic_key in sorted(set(signal_by_topic) | set(opp_by_topic)):
         profile = profile_map.get(topic_key)
         if profile is None:
-            profile = {
-                "topic_id": topic_key,
-                "name": topic_key,
-                "status": "active",
-                "goal": "待补充",
-                "queries": [],
-                "keywords": [],
-                "negative_keywords": [],
-                "source_preferences": [],
-                "learning": {},
-            }
-            profiles.append(profile)
-            profile_map[topic_key] = profile
+            continue
 
         learning = profile.get("learning")
         if not isinstance(learning, dict):
@@ -704,14 +825,16 @@ def build_opportunities(
         distribution = distribution_score(topic_ids, source_ids, content)
         automation_fit = automation_fit_score(topic_ids, content)
         unit_economics = unit_economics_score(topic_ids, content)
+        if is_dev_heavy(source_ids, content) and not is_broad_market(topic_ids, source_ids, content):
+            market_signal_score = clamp(market_signal_score - 0.06)
         self_sustainability_score = clamp(
-            monetization * 0.26
-            + distribution * 0.2
-            + automation_fit * 0.2
-            + unit_economics * 0.2
+            monetization * 0.28
+            + distribution * 0.22
+            + automation_fit * 0.18
+            + unit_economics * 0.18
             + north_star_topic_score * 0.14
         )
-        score = clamp(market_signal_score * 0.68 + self_sustainability_score * 0.32)
+        score = clamp(market_signal_score * 0.48 + self_sustainability_score * 0.52)
 
         confidence = clamp(sum(confidence_values) / len(confidence_values))
         importance = clamp(sum(importance_values) / len(importance_values))
@@ -738,6 +861,8 @@ def build_opportunities(
         payment_hypothesis = derive_payment_hypothesis(commercial_tracks, content)
         pricing_hypothesis = derive_pricing_hypothesis(commercial_tracks)
         north_star_alignment = derive_alignment_label(self_sustainability_score)
+        market_scope = derive_market_scope(topic_ids, source_ids, content)
+        market_angle = derive_market_angle(topic_ids, source_ids, content, commercial_tracks)
 
         opportunity = {
             "opportunity_id": opp_id,
@@ -749,6 +874,8 @@ def build_opportunities(
             "market_signal_score": market_signal_score,
             "self_sustainability_score": self_sustainability_score,
             "north_star_alignment": north_star_alignment,
+            "market_scope": market_scope,
+            "market_angle": market_angle,
             "confidence": confidence,
             "importance": importance,
             "topic_ids": topic_ids,
@@ -821,6 +948,8 @@ def render_md(opportunities: list[dict[str, Any]], signal_count: int) -> str:
                 f"- market_signal_score: {item.get('market_signal_score', '-')}",
                 f"- self_sustainability_score: {item.get('self_sustainability_score', '-')}",
                 f"- north_star_alignment: {item.get('north_star_alignment', '-')}",
+                f"- market_scope: {item.get('market_scope', '-')}",
+                f"- market_angle: {item.get('market_angle', '-')}",
                 f"- commercial_tracks: {', '.join(TRACK_LABELS.get(track, track) for track in item.get('commercial_tracks', [])) or 'none'}",
                 f"- business_model_hypothesis: {item.get('business_model_hypothesis', '-')}",
                 f"- recommended_action: {item['recommended_action']}",

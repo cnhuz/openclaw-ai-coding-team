@@ -1,54 +1,16 @@
 {
   "schemaVersion": 1,
-  "updatedAt": null,
+  "updatedAt": "2026-03-09T00:00:00+00:00",
   "settings": {
     "enabled": true,
     "publicWebOnly": true,
-    "maxSourcesPerCycle": 4,
-    "maxQueriesPerCycle": 8,
-    "maxSignalsPerCycle": 12,
+    "maxSourcesPerCycle": 5,
+    "maxQueriesPerCycle": 12,
+    "maxSignalsPerCycle": 14,
     "candidateThreshold": 0.58,
     "readyReviewThreshold": 0.74
   },
   "sources": [
-    {
-      "source_id": "github-trending",
-      "label": "GitHub Trending",
-      "channel": "developer-community",
-      "kind": "public-web",
-      "enabled": true,
-      "priority": "P1",
-      "base_url": "https://github.com/trending",
-      "search_templates": [
-        "site:github.com {query}",
-        "site:github.com {topic_keywords} open source",
-        "site:github.com trending {topic_keywords}"
-      ],
-      "topic_tags": [
-        "community-trends",
-        "technical-enablers"
-      ],
-      "notes": "适合发现开源趋势、技术启发与开发者需求。"
-    },
-    {
-      "source_id": "hacker-news",
-      "label": "Hacker News",
-      "channel": "developer-community",
-      "kind": "public-web",
-      "enabled": true,
-      "priority": "P1",
-      "base_url": "https://news.ycombinator.com/",
-      "search_templates": [
-        "site:news.ycombinator.com {query}",
-        "site:news.ycombinator.com {topic_keywords}"
-      ],
-      "topic_tags": [
-        "community-trends",
-        "technical-enablers",
-        "user-pain-demand"
-      ],
-      "notes": "适合发现开发者论坛中的新需求、产品讨论与技术变化。"
-    },
     {
       "source_id": "reddit-public",
       "label": "Reddit Public",
@@ -59,15 +21,21 @@
       "base_url": "https://www.reddit.com/",
       "search_templates": [
         "site:reddit.com {query}",
-        "site:reddit.com {topic_keywords} review",
-        "site:reddit.com {topic_keywords} pain"
+        "site:reddit.com \"best {topic_keywords}\"",
+        "site:reddit.com \"{topic_keywords}\" review",
+        "site:reddit.com \"{topic_keywords}\" worth it",
+        "site:reddit.com \"{topic_keywords}\" pain"
       ],
       "topic_tags": [
         "user-pain-demand",
-        "community-trends",
-        "competitor-moves"
+        "broad-demand-pools",
+        "payment-intent",
+        "distribution-leverage",
+        "search-intent-demand",
+        "competitor-moves",
+        "community-trends"
       ],
-      "notes": "适合收集用户吐槽、替代方案、使用反馈和新机会线索。"
+      "notes": "宽平台，不只看开发者；优先抓真实吐槽、比较、付费意愿和广谱人群需求。"
     },
     {
       "source_id": "x-public",
@@ -75,19 +43,93 @@
       "channel": "social-network",
       "kind": "public-web",
       "enabled": true,
-      "priority": "P2",
+      "priority": "P1",
       "base_url": "https://x.com/explore",
       "search_templates": [
         "site:x.com {query}",
         "site:twitter.com {query}",
-        "site:x.com {topic_keywords}"
+        "site:x.com \"{topic_keywords}\"",
+        "site:x.com \"{topic_keywords}\" launch",
+        "site:x.com \"{topic_keywords}\" pricing"
       ],
       "topic_tags": [
+        "broad-demand-pools",
+        "payment-intent",
+        "distribution-leverage",
         "community-trends",
-        "technical-enablers",
         "competitor-moves"
       ],
-      "notes": "适合追踪最新热点和原始发布，但通常应配合 browser 或 API 型 skill。"
+      "notes": "适合追最新需求、传播路径和买点表述；不要默认只盯技术圈。"
+    },
+    {
+      "source_id": "buyer-intent-web",
+      "label": "Buyer Intent Web",
+      "channel": "search-intent",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "",
+      "search_templates": [
+        "site:g2.com OR site:capterra.com OR site:alternativeto.net {query}",
+        "\"best {topic_keywords}\" review pricing",
+        "\"{topic_keywords}\" alternative pricing",
+        "\"{topic_keywords}\" template download",
+        "\"{topic_keywords}\" generator"
+      ],
+      "topic_tags": [
+        "search-intent-demand",
+        "payment-intent",
+        "competitor-moves",
+        "unit-economics"
+      ],
+      "notes": "直接观察购买意图、替代品比较、价格锚点和模板/生成器需求。"
+    },
+    {
+      "source_id": "emergent-public-web",
+      "label": "Emergent Public Web",
+      "channel": "public-web",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "",
+      "search_templates": [
+        "\"best {topic_keywords} discussion\"",
+        "\"top {topic_keywords} blog\"",
+        "\"{topic_keywords}\" forum",
+        "\"{topic_keywords}\" generator",
+        "\"{topic_keywords}\" calculator"
+      ],
+      "topic_tags": [
+        "broad-demand-pools",
+        "search-intent-demand",
+        "payment-intent",
+        "distribution-leverage",
+        "user-pain-demand"
+      ],
+      "notes": "用于发现尚未预置的新站点、新讨论区和高商业意图搜索面。"
+    },
+    {
+      "source_id": "indie-hackers",
+      "label": "Indie Hackers",
+      "channel": "builder-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "https://www.indiehackers.com/",
+      "search_templates": [
+        "site:indiehackers.com {query}",
+        "site:indiehackers.com {topic_keywords} revenue",
+        "site:indiehackers.com {topic_keywords} seo",
+        "site:indiehackers.com {topic_keywords} pricing"
+      ],
+      "topic_tags": [
+        "payment-intent",
+        "distribution-leverage",
+        "unit-economics",
+        "automation-fit",
+        "competitor-moves"
+      ],
+      "notes": "适合发现真实做站、做微产品、做分发和验证收入的经验。"
     },
     {
       "source_id": "product-hunt",
@@ -99,31 +141,61 @@
       "base_url": "https://www.producthunt.com/",
       "search_templates": [
         "site:producthunt.com {query}",
-        "site:producthunt.com {topic_keywords}"
+        "site:producthunt.com {topic_keywords}",
+        "site:producthunt.com {topic_keywords} pricing",
+        "site:producthunt.com {topic_keywords} launch"
       ],
       "topic_tags": [
         "competitor-moves",
+        "payment-intent",
+        "distribution-leverage",
+        "automation-fit",
         "community-trends"
       ],
-      "notes": "适合发现新产品、定位包装方式与市场关注点。"
+      "notes": "适合发现产品包装、分发叙事和可快速产品化的形态。"
     },
     {
-      "source_id": "lobsters",
-      "label": "Lobsters",
-      "channel": "developer-community",
+      "source_id": "news-and-analysis",
+      "label": "News / Analysis Sites",
+      "channel": "industry-media",
       "kind": "public-web",
       "enabled": true,
       "priority": "P2",
-      "base_url": "https://lobste.rs/",
+      "base_url": "https://www.36kr.com/",
       "search_templates": [
-        "site:lobste.rs {query}",
-        "site:lobste.rs {topic_keywords}"
+        "site:36kr.com OR site:sspai.com OR site:infoq.com {query}",
+        "site:36kr.com OR site:sspai.com {topic_keywords} 赚钱",
+        "site:36kr.com OR site:infoq.com {topic_keywords} 定价"
       ],
       "topic_tags": [
-        "community-trends",
+        "broad-demand-pools",
+        "competitor-moves",
+        "distribution-leverage",
+        "unit-economics"
+      ],
+      "notes": "适合看广谱赛道、产品定价、市场变化与非开发者人群需求。"
+    },
+    {
+      "source_id": "official-sites",
+      "label": "Official Sites / Pricing / Changelogs",
+      "channel": "official-docs",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "",
+      "search_templates": [
+        "{query} official pricing",
+        "{query} official changelog",
+        "{topic_keywords} official blog",
+        "{topic_keywords} release notes"
+      ],
+      "topic_tags": [
+        "competitor-moves",
+        "payment-intent",
+        "unit-economics",
         "technical-enablers"
       ],
-      "notes": "适合发现工程化、架构与工具细分机会。"
+      "notes": "用于验证官方价格、版本能力和真实商业边界。"
     },
     {
       "source_id": "v2ex",
@@ -135,13 +207,75 @@
       "base_url": "https://www.v2ex.com/",
       "search_templates": [
         "site:v2ex.com {query}",
-        "site:v2ex.com {topic_keywords}"
+        "site:v2ex.com \"{topic_keywords}\"",
+        "site:v2ex.com \"{topic_keywords}\" 工具",
+        "site:v2ex.com \"{topic_keywords}\" 付费"
       ],
       "topic_tags": [
         "user-pain-demand",
+        "broad-demand-pools",
+        "payment-intent",
         "community-trends"
       ],
-      "notes": "适合中文开发者与产品用户反馈场景。"
+      "notes": "中文用户反馈池，不只看开发者，也看职场、效率、学习和副业场景。"
+    },
+    {
+      "source_id": "github-trending",
+      "label": "GitHub Trending",
+      "channel": "developer-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P3",
+      "base_url": "https://github.com/trending",
+      "search_templates": [
+        "site:github.com {query}",
+        "site:github.com {topic_keywords} open source",
+        "site:github.com trending {topic_keywords}"
+      ],
+      "topic_tags": [
+        "technical-enablers",
+        "community-trends",
+        "automation-fit"
+      ],
+      "notes": "保留为技术与开源子线，不再作为主探索面。"
+    },
+    {
+      "source_id": "hacker-news",
+      "label": "Hacker News",
+      "channel": "developer-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P3",
+      "base_url": "https://news.ycombinator.com/",
+      "search_templates": [
+        "site:news.ycombinator.com {query}",
+        "site:news.ycombinator.com {topic_keywords}",
+        "site:news.ycombinator.com {topic_keywords} revenue"
+      ],
+      "topic_tags": [
+        "community-trends",
+        "technical-enablers",
+        "automation-fit"
+      ],
+      "notes": "保留为开发者/独立开发子线，但不再默认代表整体商业机会。"
+    },
+    {
+      "source_id": "lobsters",
+      "label": "Lobsters",
+      "channel": "developer-community",
+      "kind": "public-web",
+      "enabled": true,
+      "priority": "P3",
+      "base_url": "https://lobste.rs/",
+      "search_templates": [
+        "site:lobste.rs {query}",
+        "site:lobste.rs {topic_keywords}"
+      ],
+      "topic_tags": [
+        "technical-enablers",
+        "automation-fit"
+      ],
+      "notes": "工程细分讨论池，保留为子线。"
     },
     {
       "source_id": "juejin",
@@ -149,7 +283,7 @@
       "channel": "content-community",
       "kind": "public-web",
       "enabled": true,
-      "priority": "P2",
+      "priority": "P3",
       "base_url": "https://juejin.cn/",
       "search_templates": [
         "site:juejin.cn {query}",
@@ -159,7 +293,7 @@
         "technical-enablers",
         "community-trends"
       ],
-      "notes": "适合中文技术社区趋势扫描与方案空间观察。"
+      "notes": "中文技术趋势子线。"
     },
     {
       "source_id": "medium-devto",
@@ -167,78 +301,19 @@
       "channel": "content-community",
       "kind": "public-web",
       "enabled": true,
-      "priority": "P2",
+      "priority": "P3",
       "base_url": "https://medium.com/",
       "search_templates": [
         "site:medium.com OR site:dev.to {query}",
-        "site:medium.com OR site:dev.to {topic_keywords}"
+        "site:medium.com OR site:dev.to {topic_keywords}",
+        "site:medium.com OR site:dev.to {topic_keywords} seo"
       ],
       "topic_tags": [
-        "technical-enablers",
-        "community-trends",
-        "competitor-moves"
+        "automation-fit",
+        "distribution-leverage",
+        "community-trends"
       ],
-      "notes": "适合长文、复盘、趋势综述与方案分析。"
-    },
-    {
-      "source_id": "news-and-analysis",
-      "label": "News / Analysis Sites",
-      "channel": "industry-media",
-      "kind": "public-web",
-      "enabled": true,
-      "priority": "P3",
-      "base_url": "https://www.36kr.com/",
-      "search_templates": [
-        "site:36kr.com OR site:sspai.com OR site:infoq.com {query}",
-        "site:36kr.com OR site:infoq.com {topic_keywords}"
-      ],
-      "topic_tags": [
-        "competitor-moves",
-        "community-trends",
-        "technical-enablers"
-      ],
-      "notes": "适合发现行业动态、产品变化与技术趋势。"
-    },
-    {
-      "source_id": "official-sites",
-      "label": "Official Sites / Changelogs",
-      "channel": "official-docs",
-      "kind": "public-web",
-      "enabled": true,
-      "priority": "P1",
-      "base_url": "",
-      "search_templates": [
-        "{query} official changelog",
-        "{topic_keywords} official blog",
-        "{topic_keywords} release notes"
-      ],
-      "topic_tags": [
-        "competitor-moves",
-        "technical-enablers"
-      ],
-      "notes": "适合验证产品更新、官方发布与版本变更。"
-    },
-    {
-      "source_id": "emergent-public-web",
-      "label": "Emergent Public Web",
-      "channel": "public-web",
-      "kind": "public-web",
-      "enabled": true,
-      "priority": "P3",
-      "base_url": "",
-      "search_templates": [
-        "\"best {topic_keywords} discussion\"",
-        "\"top {topic_keywords} blog\"",
-        "\"{topic_keywords}\" \"community\"",
-        "\"{topic_keywords}\" \"forum\""
-      ],
-      "topic_tags": [
-        "user-pain-demand",
-        "competitor-moves",
-        "community-trends",
-        "technical-enablers"
-      ],
-      "notes": "用于发现未预置的新站点、新社区和新内容源；发现后应同步写入 `site_profiles.json`。"
+      "notes": "适合长文复盘、增长经验和轻产品案例，但不再偏向纯技术解释。"
     }
   ]
 }

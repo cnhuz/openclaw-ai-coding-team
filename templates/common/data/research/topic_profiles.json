@@ -4,35 +4,20 @@
   "profiles": [
     {
       "topic_id": "user-pain-demand",
-      "name": "用户痛点与真实需求",
+      "name": "高频痛点与真实需求",
       "status": "active",
-      "goal": "持续发现用户在论坛、社区、公开讨论中的真实抱怨、替代方案与未满足需求。",
-      "north_star_weight": 1.05,
-      "commercial_tracks": [
-        "cashflow"
-      ],
+      "goal": "持续发现用户反复抱怨、反复手工处理、已在找替代品的真实需求，优先聚焦能被小产品快速承接的问题。",
+      "north_star_weight": 1.1,
+      "commercial_tracks": ["cashflow"],
       "queries": [
-        "用户 吐槽 效率 论坛",
-        "pain point workflow discussion",
-        "users frustrated with current tools"
+        "what still wastes your time every day",
+        "I wish there was a tool for {topic_keywords}",
+        "{topic_keywords} pain review alternative",
+        "反复 手工 很麻烦 有没有工具"
       ],
-      "keywords": [
-        "痛点",
-        "替代方案",
-        "需求",
-        "效率",
-        "工作流"
-      ],
-      "negative_keywords": [
-        "广告",
-        "搬运",
-        "纯资讯"
-      ],
-      "source_preferences": [
-        "reddit-public",
-        "v2ex",
-        "hacker-news"
-      ],
+      "keywords": ["痛点", "替代方案", "效率", "手工", "麻烦"],
+      "negative_keywords": ["纯资讯", "搬运", "营销稿"],
+      "source_preferences": ["reddit-public", "x-public", "v2ex", "buyer-intent-web"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,
@@ -47,36 +32,22 @@
       }
     },
     {
-      "topic_id": "competitor-moves",
-      "name": "竞品变化与市场空档",
+      "topic_id": "broad-demand-pools",
+      "name": "广谱需求人群池",
       "status": "active",
-      "goal": "持续跟踪竞品更新、定价变化、产品叙事变化与功能空档。",
-      "north_star_weight": 0.9,
-      "commercial_tracks": [
-        "cashflow",
-        "oss_influence"
-      ],
+      "goal": "主动扫描家长、学生、创作者、小商家、求职者、运营人员等更广谱的人群需求，避免探索只停在开发者圈层。",
+      "north_star_weight": 1.32,
+      "commercial_tracks": ["cashflow", "ads", "compound_asset"],
       "queries": [
-        "competitor new feature release",
-        "竞品 更新 功能 定价",
-        "alternative app review feature gap"
+        "parents still pay for {topic_keywords}",
+        "creator workflow pain tool",
+        "small business repetitive task tool",
+        "求职 简历 面试 工具 需求",
+        "家长 学生 工具 需求"
       ],
-      "keywords": [
-        "竞品",
-        "更新",
-        "定价",
-        "替代",
-        "review"
-      ],
-      "negative_keywords": [
-        "软文",
-        "转载"
-      ],
-      "source_preferences": [
-        "official-sites",
-        "product-hunt",
-        "news-and-analysis"
-      ],
+      "keywords": ["家长", "学生", "创作者", "小商家", "求职", "运营"],
+      "negative_keywords": ["政策新闻", "纯观点", "无具体场景"],
+      "source_preferences": ["reddit-public", "x-public", "emergent-public-web", "news-and-analysis", "buyer-intent-web"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,
@@ -91,82 +62,22 @@
       }
     },
     {
-      "topic_id": "community-trends",
-      "name": "社区热点与方向变化",
+      "topic_id": "search-intent-demand",
+      "name": "高搜索意图需求",
       "status": "active",
-      "goal": "发现社区共识变化、热议方向、爆发中的使用场景与流行工作法。",
-      "north_star_weight": 0.75,
-      "commercial_tracks": [
-        "oss_influence",
-        "compound_asset"
-      ],
+      "goal": "优先发现用户已经在搜索“best/alternative/template/generator/calculator/download”的需求，争取更快形成流量和付费验证。",
+      "north_star_weight": 1.35,
+      "commercial_tracks": ["cashflow", "ads", "compound_asset"],
       "queries": [
-        "what people are building now",
-        "社区 热门 讨论 新方向",
-        "new trend forum discussion"
+        "best {topic_keywords} tool",
+        "{topic_keywords} template generator",
+        "{topic_keywords} calculator download",
+        "{topic_keywords} alternative review",
+        "最好的 {topic_keywords} 工具"
       ],
-      "keywords": [
-        "热点",
-        "趋势",
-        "社区",
-        "讨论",
-        "方向"
-      ],
-      "negative_keywords": [
-        "纯流量",
-        "站外导流"
-      ],
-      "source_preferences": [
-        "hacker-news",
-        "github-trending",
-        "reddit-public",
-        "v2ex"
-      ],
-      "learning": {
-        "signal_count": 0,
-        "opportunity_count": 0,
-        "promoted_count": 0,
-        "rejected_count": 0,
-        "last_signal_at": null,
-        "query_expansions": [],
-        "blocked_terms": [],
-        "high_yield_sources": [],
-        "low_yield_sources": [],
-        "source_bias": {}
-      }
-    },
-    {
-      "topic_id": "technical-enablers",
-      "name": "技术新能力与方案空间",
-      "status": "active",
-      "goal": "发现可显著改变产品形态、开发效率或交付方式的新技术能力。",
-      "north_star_weight": 0.85,
-      "commercial_tracks": [
-        "oss_influence",
-        "cashflow"
-      ],
-      "queries": [
-        "new api release developer workflow",
-        "open source launch productivity",
-        "技术 发布 能力 新工作流"
-      ],
-      "keywords": [
-        "API",
-        "模型",
-        "开源",
-        "发布",
-        "工作流"
-      ],
-      "negative_keywords": [
-        "营销稿",
-        "概念炒作"
-      ],
-      "source_preferences": [
-        "github-trending",
-        "hacker-news",
-        "official-sites",
-        "juejin"
-      ],
+      "keywords": ["best", "alternative", "template", "generator", "calculator", "download"],
+      "negative_keywords": ["学术论文", "纯教程"],
+      "source_preferences": ["buyer-intent-web", "reddit-public", "x-public", "emergent-public-web", "product-hunt"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,
@@ -182,35 +93,20 @@
     },
     {
       "topic_id": "payment-intent",
-      "name": "付费意愿与可收费场景",
+      "name": "付费意愿与价格锚点",
       "status": "active",
-      "goal": "识别用户已经在掏钱、明确愿意为效率/结果付费，或已有稳定价格锚点的机会。",
-      "north_star_weight": 1.25,
-      "commercial_tracks": [
-        "cashflow"
-      ],
+      "goal": "识别用户已经在掏钱、会比较价格、会寻找替代品或会为结果付费的机会。",
+      "north_star_weight": 1.3,
+      "commercial_tracks": ["cashflow"],
       "queries": [
-        "users willing to pay for {topic_keywords}",
         "{topic_keywords} pricing review alternatives",
-        "替代方案 定价 付费 意愿"
+        "users willing to pay for {topic_keywords}",
+        "\"worth it\" {topic_keywords}",
+        "定价 付费 意愿 替代"
       ],
-      "keywords": [
-        "付费",
-        "定价",
-        "订阅",
-        "价格",
-        "购买"
-      ],
-      "negative_keywords": [
-        "免费搬运",
-        "纯白嫖"
-      ],
-      "source_preferences": [
-        "official-sites",
-        "reddit-public",
-        "product-hunt",
-        "news-and-analysis"
-      ],
+      "keywords": ["付费", "定价", "购买", "订阅", "worth it"],
+      "negative_keywords": ["免费搬运", "纯白嫖", "破解版"],
+      "source_preferences": ["buyer-intent-web", "reddit-public", "x-public", "product-hunt", "indie-hackers", "official-sites"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,
@@ -226,38 +122,20 @@
     },
     {
       "topic_id": "distribution-leverage",
-      "name": "分发杠杆与低成本获客",
+      "name": "分发杠杆与流量面",
       "status": "active",
-      "goal": "识别天然适合 SEO、社区传播、开源曝光、目录分发或社媒传播的机会。",
-      "north_star_weight": 1.15,
-      "commercial_tracks": [
-        "ads",
-        "oss_influence",
-        "compound_asset"
-      ],
+      "goal": "识别天然适合 SEO、社区扩散、目录分发、社媒传播或广告变现的产品机会。",
+      "north_star_weight": 1.22,
+      "commercial_tracks": ["ads", "compound_asset", "cashflow"],
       "queries": [
         "{topic_keywords} seo tool site",
-        "{topic_keywords} open source traction",
-        "低成本 获客 SEO 工具站"
+        "{topic_keywords} landing page examples",
+        "{topic_keywords} shareable calculator",
+        "低成本 获客 工具站 模板"
       ],
-      "keywords": [
-        "SEO",
-        "流量",
-        "传播",
-        "开源",
-        "目录"
-      ],
-      "negative_keywords": [
-        "重投放",
-        "高销售"
-      ],
-      "source_preferences": [
-        "github-trending",
-        "hacker-news",
-        "product-hunt",
-        "x-public",
-        "medium-devto"
-      ],
+      "keywords": ["SEO", "流量", "目录", "着陆页", "分享", "广告"],
+      "negative_keywords": ["高销售", "重投放", "品牌大预算"],
+      "source_preferences": ["x-public", "reddit-public", "product-hunt", "emergent-public-web", "indie-hackers"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,
@@ -276,32 +154,17 @@
       "name": "单位经济性与成本结构",
       "status": "active",
       "goal": "评估 token、infra、维护与支持成本是否支撑得起低价、广谱、可持续的产品模型。",
-      "north_star_weight": 1.2,
-      "commercial_tracks": [
-        "cashflow",
-        "compound_asset"
-      ],
+      "north_star_weight": 1.18,
+      "commercial_tracks": ["cashflow", "compound_asset"],
       "queries": [
         "{topic_keywords} hosting cost margins",
         "{topic_keywords} token cost pricing",
-        "低价 软件 成本 维护"
+        "低价 软件 成本 维护",
+        "{topic_keywords} self serve margin"
       ],
-      "keywords": [
-        "成本",
-        "毛利",
-        "维护",
-        "token",
-        "服务器"
-      ],
-      "negative_keywords": [
-        "高定制",
-        "重服务"
-      ],
-      "source_preferences": [
-        "official-sites",
-        "news-and-analysis",
-        "hacker-news"
-      ],
+      "keywords": ["成本", "毛利", "维护", "token", "self-serve"],
+      "negative_keywords": ["高定制", "重服务", "enterprise rollout"],
+      "source_preferences": ["buyer-intent-web", "indie-hackers", "official-sites", "news-and-analysis"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,
@@ -321,34 +184,101 @@
       "status": "active",
       "goal": "寻找适合 agent 团队低维护、可自动化构建、自动迭代和长期运营的产品形态。",
       "north_star_weight": 1.1,
-      "commercial_tracks": [
-        "cashflow",
-        "compound_asset",
-        "oss_influence"
-      ],
+      "commercial_tracks": ["cashflow", "compound_asset", "ads"],
       "queries": [
-        "{topic_keywords} low touch product",
-        "{topic_keywords} automation workflow template",
+        "{topic_keywords} template generator",
+        "{topic_keywords} checklist builder",
+        "{topic_keywords} report automation",
         "自动化 可维护 微产品"
       ],
-      "keywords": [
-        "自动化",
-        "低维护",
-        "模板",
-        "工作流",
-        "低服务"
+      "keywords": ["模板", "生成器", "计算器", "清单", "报告", "低维护"],
+      "negative_keywords": ["定制开发", "长实施", "高客服"],
+      "source_preferences": ["product-hunt", "reddit-public", "indie-hackers", "emergent-public-web", "medium-devto"],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
+      }
+    },
+    {
+      "topic_id": "competitor-moves",
+      "name": "竞品变化与市场空档",
+      "status": "active",
+      "goal": "持续跟踪竞品更新、定价变化、产品叙事变化与功能空档，优先关注商业模式和分发上的机会。",
+      "north_star_weight": 0.95,
+      "commercial_tracks": ["cashflow", "compound_asset"],
+      "queries": [
+        "competitor new pricing launch",
+        "竞品 更新 功能 定价",
+        "alternative app review feature gap",
+        "{topic_keywords} vs alternative pricing"
       ],
-      "negative_keywords": [
-        "定制开发",
-        "长实施",
-        "高客服"
+      "keywords": ["竞品", "更新", "定价", "替代", "评测"],
+      "negative_keywords": ["软文", "转载"],
+      "source_preferences": ["official-sites", "product-hunt", "buyer-intent-web", "indie-hackers", "news-and-analysis"],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
+      }
+    },
+    {
+      "topic_id": "community-trends",
+      "name": "社区热点与方向变化",
+      "status": "active",
+      "goal": "发现社区方向变化、爆发中的使用场景与高频谈论对象，但不再让“热闹”压过商业信号。",
+      "north_star_weight": 0.68,
+      "commercial_tracks": ["compound_asset", "oss_influence"],
+      "queries": [
+        "what people are talking about this week",
+        "社区 热门 讨论 新方向",
+        "new trend forum discussion"
       ],
-      "source_preferences": [
-        "github-trending",
-        "hacker-news",
-        "lobsters",
-        "medium-devto"
+      "keywords": ["热点", "趋势", "讨论", "方向"],
+      "negative_keywords": ["纯流量", "站外导流"],
+      "source_preferences": ["reddit-public", "x-public", "product-hunt", "hacker-news"],
+      "learning": {
+        "signal_count": 0,
+        "opportunity_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "last_signal_at": null,
+        "query_expansions": [],
+        "blocked_terms": [],
+        "high_yield_sources": [],
+        "low_yield_sources": [],
+        "source_bias": {}
+      }
+    },
+    {
+      "topic_id": "technical-enablers",
+      "name": "技术新能力与方案空间",
+      "status": "active",
+      "goal": "发现能显著降低生产成本或打开新产品形态的技术能力，但不再默认把技术发布本身当成主机会。",
+      "north_star_weight": 0.72,
+      "commercial_tracks": ["oss_influence", "compound_asset"],
+      "queries": [
+        "new api release product workflow",
+        "open source launch new use case",
+        "技术 发布 能力 新产品形态"
       ],
+      "keywords": ["API", "模型", "开源", "发布", "能力"],
+      "negative_keywords": ["营销稿", "概念炒作"],
+      "source_preferences": ["github-trending", "official-sites", "hacker-news", "lobsters"],
       "learning": {
         "signal_count": 0,
         "opportunity_count": 0,

@@ -187,6 +187,9 @@ def high_yield_sources(profile: dict[str, Any]) -> set[str]:
 
 
 def topic_score(profile: dict[str, Any], opportunities: list[dict[str, Any]]) -> float:
+    base_weight = profile.get("north_star_weight", 1.0)
+    if not isinstance(base_weight, (int, float)):
+        base_weight = 1.0
     learning = profile.get("learning")
     if isinstance(learning, dict):
         promoted = int(learning.get("promoted_count", 0) or 0)
@@ -197,7 +200,7 @@ def topic_score(profile: dict[str, Any], opportunities: list[dict[str, Any]]) ->
         rejected = 0
         signals = 0
 
-    score = 1.0 + min(promoted, 5) * 0.12 + min(signals, 20) * 0.01 - min(rejected, 5) * 0.06
+    score = float(base_weight) + min(promoted, 5) * 0.12 + min(signals, 20) * 0.01 - min(rejected, 5) * 0.06
 
     topic_id = profile.get("topic_id")
     if isinstance(topic_id, str) and topic_id:

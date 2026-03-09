@@ -320,6 +320,7 @@
 - 首页还会进一步区分 `内部系统产出 / 对外产品产出 / 经营实验产出`，避免把团队自我强化、产品方向沉淀和真实商业验证混在一起看
 - 控制台现已增加 `/experiments` 商业化实验面板，用于查看当前任务/机会对应的商业轨道、分发路径、成功指标与止损条件
 - 商业化实验现已支持结构化记录：`data/experiments/registry.json`，可跟踪收入、分发、定价、成本与自动化适配实验
+- 探索系统现已按“平台不变、扫描视角重构”调整：优先扫描付费意愿、搜索需求、广谱人群与分发杠杆，而不是默认被开发者社区热点带偏
 - 控制台现已支持 `/kpi`，可查看 Daily / Weekly agent scorecards，并手动触发 KPI job
 - KPI 引擎第一版：`python3 automation/scripts/compute_agent_kpi.py --openclaw-home ~/.openclaw --period daily --write`
 - 研究机会现在会额外输出商业模式、付费假设、分发路径、单位经济性、自动化适配、成功指标与止损条件
