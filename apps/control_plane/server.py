@@ -863,6 +863,76 @@ def latest_report_file(root: Path) -> Path | None:
     return files[0]
 
 
+def assemble_state(
+    config: AppConfig,
+    tasks: list[dict],
+    opportunities: list[dict],
+    agents: list[dict],
+    cron_jobs: list[dict],
+    recent_handoffs: list[dict],
+    recent_logs: list[dict],
+    runtime_ready: bool,
+    runtime_source: str,
+) -> dict:
+    active_tasks = [task for task in tasks if task.get("state") != "Closed"]
+    blocked_tasks = [task for task in active_tasks if has_blocker(task)]
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
+    stale_active_tasks = [
+        task
+        for task in active_tasks
+        if (parse_iso(task.get("updated_at")) or datetime.fromtimestamp(0, tz=timezone.utc)) < stale_cutoff
+    ]
+    opportunity_counts = Counter(item.get("status", "unknown") for item in opportunities)
+    running_jobs = [job for job in cron_jobs if job["running"]]
+    never_run_jobs = [job for job in cron_jobs if job["last_run_at"] is None]
+    failed_jobs = [job for job in cron_jobs if job["consecutive_errors"] > 0 or job["last_run_status"] == "failed"]
+    state = {
+        "config": config,
+        "tasks": tasks,
+        "active_tasks": active_tasks,
+        "blocked_tasks": blocked_tasks,
+        "stale_active_tasks": stale_active_tasks,
+        "opportunities": opportunities,
+        "opportunity_counts": opportunity_counts,
+        "agents": agents,
+        "cron_jobs": cron_jobs,
+        "running_jobs": running_jobs,
+        "never_run_jobs": never_run_jobs,
+        "failed_jobs": failed_jobs,
+        "recent_handoffs": recent_handoffs,
+        "recent_logs": recent_logs,
+        "runtime_ready": runtime_ready,
+        "runtime_source": runtime_source,
+    }
+    state["alerts"] = build_alerts(state)
+    state["events"] = build_global_events(state)
+    state["agent_stats"] = build_agent_stats(state)
+    state["mainline_paths"] = build_mainline_paths(state)
+    daily_kpi_path = latest_report_file(config.kpi_root / "daily")
+    weekly_kpi_path = latest_report_file(config.kpi_root / "weekly")
+    state["kpi"] = {
+        "daily_path": daily_kpi_path,
+        "daily_report": load_kpi_report(daily_kpi_path),
+        "weekly_path": weekly_kpi_path,
+        "weekly_report": load_kpi_report(weekly_kpi_path),
+    }
+    return state
+
+
+def build_fast_state(config: AppConfig) -> dict:
+    return assemble_state(
+        config=config,
+        tasks=load_tasks(config),
+        opportunities=load_opportunities(config),
+        agents=[],
+        cron_jobs=[],
+        recent_handoffs=load_recent_handoffs(config),
+        recent_logs=load_recent_logs(config),
+        runtime_ready=False,
+        runtime_source="fast-local",
+    )
+
+
 def load_kpi_report(path: Path | None) -> dict | None:
     if path is None or not path.exists():
         return None
@@ -913,6 +983,8 @@ def compute_state(config: AppConfig) -> dict:
         "failed_jobs": failed_jobs,
         "recent_handoffs": load_recent_handoffs(config),
         "recent_logs": load_recent_logs(config),
+        "runtime_ready": True,
+        "runtime_source": "full-runtime",
     }
     state["alerts"] = build_alerts(state)
     state["events"] = build_global_events(state)
@@ -958,7 +1030,11 @@ def build_state(config: AppConfig) -> dict:
         cached = STATE_CACHE.get(cache_key)
     now = time.monotonic()
     if cached is None:
-        return refresh_state_cache(config)
+        state = build_fast_state(config)
+        with CACHE_LOCK:
+            STATE_CACHE[cache_key] = (now, state)
+        schedule_state_refresh(config)
+        return dict(state)
     if now - cached[0] < STATE_CACHE_TTL_SECONDS:
         return dict(cached[1])
     schedule_state_refresh(config)
@@ -969,8 +1045,12 @@ def prewarm_loop(config: AppConfig) -> None:
     while True:
         with CACHE_LOCK:
             cached = STATE_CACHE.get(str(config.openclaw_home.resolve()))
-        if cached is None or time.monotonic() - cached[0] >= CACHE_PREWARM_INTERVAL_SECONDS:
+        if cached is None:
             schedule_state_refresh(config)
+        else:
+            cached_at, cached_state = cached
+            if not cached_state.get("runtime_ready", False) or time.monotonic() - cached_at >= CACHE_PREWARM_INTERVAL_SECONDS:
+                schedule_state_refresh(config)
         time.sleep(CACHE_PREWARM_INTERVAL_SECONDS)
 
 
@@ -1097,6 +1177,7 @@ def layout(title: str, body: str, current: str, message: str) -> bytes:
 
 def render_summary(state: dict, message: str) -> bytes:
     config: AppConfig = state["config"]
+    runtime_ready = bool(state.get("runtime_ready", False))
     active_tasks = state["active_tasks"]
     blocked_tasks = state["blocked_tasks"]
     stale_active_tasks = state["stale_active_tasks"]
@@ -1113,6 +1194,9 @@ def render_summary(state: dict, message: str) -> bytes:
     else:
         daily_top = "-"
 
+    runtime_jobs_value = str(len(running_jobs)) if runtime_ready else "加载中"
+    runtime_never_run_value = str(len(never_run_core)) if runtime_ready else "加载中"
+    runtime_agents_value = str(len(active_agents)) if runtime_ready else "加载中"
     cards = "".join(
         [
             card("活跃任务", str(len(active_tasks)), "正式任务控制面"),
@@ -1120,9 +1204,9 @@ def render_summary(state: dict, message: str) -> bytes:
             card("陈旧活跃任务", str(len(stale_active_tasks)), "超过 6 小时未更新"),
             card("Ready Review 机会", str(ready_review), "可晋升正式任务"),
             card("候选机会", str(candidates), "研究池"),
-            card("运行中的 Jobs", str(len(running_jobs)), "来自 openclaw cron"),
-            card("未自然跑过核心 Jobs", str(len(never_run_core)), "需要区分未到时间和未触发"),
-            card("活跃 Agents", str(len(active_agents)), "最近有 session"),
+            card("运行中的 Jobs", runtime_jobs_value, "来自 openclaw cron"),
+            card("未自然跑过核心 Jobs", runtime_never_run_value, "需要区分未到时间和未触发"),
+            card("活跃 Agents", runtime_agents_value, "最近有 session"),
             card("Daily KPI Top", daily_top or "-", "最新评分 Top 3"),
         ]
     )
@@ -1224,7 +1308,18 @@ def render_summary(state: dict, message: str) -> bytes:
     </div>
     """
 
+    runtime_banner = ""
+    if not runtime_ready:
+        runtime_banner = """
+    <div class="panel">
+      <h2>运行态后台加载中</h2>
+      <div class="muted">当前页已先展示本地任务、机会、交接和 KPI 快照；OpenClaw 的 agent/session/cron 运行态正在后台刷新，页面会自动再刷新一次。</div>
+    </div>
+    <script>setTimeout(function(){ window.location.reload(); }, 2500);</script>
+    """
+
     body = f"""
+    {runtime_banner}
     <div class="panel">
       <h2>控制面说明</h2>
       <div class="muted">正式任务状态以 <code>{escape(config.registry_path)}</code> 为真相源；本页面和 <code>dashboard.md</code> 都是观察面。</div>
@@ -1946,6 +2041,8 @@ def build_handler(config: AppConfig):
                 return
             if parsed.path == "/api/summary":
                 payload = {
+                    "runtime_ready": state.get("runtime_ready", False),
+                    "runtime_source": state.get("runtime_source", "-"),
                     "active_tasks": len(state["active_tasks"]),
                     "blocked_tasks": len(state["blocked_tasks"]),
                     "stale_active_tasks": len(state["stale_active_tasks"]),
