@@ -1125,10 +1125,11 @@ def find_reflection(config: AppConfig, task_id: str) -> Path | None:
 def delivery_class_from_release(path: Path | None) -> str:
     if path is None:
         return "未知"
-    text = path.read_text(encoding="utf-8")
-    if "worktree_lifecycle.py" in text or "verify_worktree_lifecycle.py" in text:
+    scope_lines = parse_markdown_section(path, "本次实现范围") + parse_markdown_section(path, "发布范围")
+    scope_text = "\n".join(scope_lines)
+    if "worktree_lifecycle.py" in scope_text or "templates/common/" in scope_text or "setup/install-openclaw-team" in scope_text:
         return "工具/脚本交付"
-    if "repo_only" in text or "specs/" in text:
+    if "specs/" in scope_text or "task brief" in scope_text or "repo 内正式 spec 固化" in scope_text or "仓库内文档与引用链路固化" in scope_text:
         return "规格/文档交付"
     return "待判断"
 
@@ -1162,29 +1163,48 @@ def build_outcome_snapshot(state: dict) -> dict:
     outputs: list[dict] = []
     regression_count = 0
     product_count = 0
+    internal_count = 0
+    external_count = 0
+    experiments = state["experiment_records"]
+    experiment_by_source = {
+        (str(item.get("source_type", "")), str(item.get("source_id", ""))): item
+        for item in experiments
+        if str(item.get("source_type", "")).strip() and str(item.get("source_id", "")).strip()
+    }
     for task in closed_tasks:
         task_id = str(task.get("task_id", "-"))
-        if task_id.startswith("TASK-REGRESSION-"):
-            regression_count += 1
-        else:
-            product_count += 1
         release_note = find_release_note(config, task_id)
         reflection = find_reflection(config, task_id)
+        delivery_class = delivery_class_from_release(release_note)
+        if task_id.startswith("TASK-REGRESSION-"):
+            category = "internal_system"
+            regression_count += 1
+            internal_count += 1
+        elif delivery_class == "工具/脚本交付":
+            category = "internal_system"
+            internal_count += 1
+            product_count += 1
+        else:
+            category = "external_product"
+            external_count += 1
+            product_count += 1
+        linked_experiment = experiment_by_source.get(("task", task_id))
         outputs.append(
             {
                 "task_id": task_id,
                 "title": str(task.get("title", "")),
                 "updated_at": parse_iso(task.get("updated_at")),
                 "owner": str(task.get("owner", "-")),
-                "delivery_class": delivery_class_from_release(release_note),
+                "delivery_class": delivery_class,
+                "category": category,
                 "delivery_summary": extract_delivery_summary(release_note),
                 "reflection_conclusion": extract_reflection_conclusion(reflection),
                 "release_note": release_note,
                 "reflection": reflection,
+                "linked_experiment": linked_experiment,
             }
         )
 
-    experiments = state["experiment_records"]
     experiment_status_counts = Counter(str(item.get("status", "-")) for item in experiments)
     realized_experiments = [
         item for item in experiments if str(item.get("current_value", "")).strip() or str(item.get("result_summary", "")).strip()
@@ -1204,6 +1224,11 @@ def build_outcome_snapshot(state: dict) -> dict:
         "closed_total": len(closed_tasks),
         "closed_product_like": product_count,
         "closed_regressions": regression_count,
+        "closed_internal": internal_count,
+        "closed_external": external_count,
+        "internal_outputs": [item for item in outputs if item["category"] == "internal_system"][:6],
+        "external_outputs": [item for item in outputs if item["category"] == "external_product"][:6],
+        "experiment_records": experiments[:6],
         "experiments_total": len(experiments),
         "experiments_with_results": len(realized_experiments),
         "experiment_status_counts": dict(experiment_status_counts),
@@ -1748,6 +1773,8 @@ def render_summary(state: dict, message: str) -> bytes:
             card("活跃 Agents", runtime_agents_value, "最近有 session"),
             card("Daily KPI Top", daily_top or "-", "最新评分 Top 3"),
             card("已闭环产出", str(outcomes["closed_total"]), "当前已关单产物总数"),
+            card("内部系统产出", str(outcomes["closed_internal"]), "工具、脚本、回归与团队内能力"),
+            card("对外产品产出", str(outcomes["closed_external"]), "产品方向、规格与对外交付候选"),
             card("实验有结果", str(outcomes["experiments_with_results"]), "已有真实经营验证结果的实验"),
         ]
     )
@@ -1802,6 +1829,49 @@ def render_summary(state: dict, message: str) -> bytes:
                 escape(format_dt(item["updated_at"])),
                 escape(item["delivery_summary"]),
                 link(item["release_note"].name, file_path_to_url(item["release_note"])) if item["release_note"] else "-",
+            ]
+        )
+
+    internal_output_rows = []
+    for item in outcomes["internal_outputs"]:
+        internal_output_rows.append(
+            [
+                link(item["task_id"], "/task?" + urlencode({"id": item["task_id"]})),
+                escape(item["delivery_class"]),
+                escape(format_dt(item["updated_at"])),
+                escape(item["delivery_summary"]),
+            ]
+        )
+
+    external_output_rows = []
+    for item in outcomes["external_outputs"]:
+        experiment = item["linked_experiment"]
+        experiment_cell = (
+            link(str(experiment.get("experiment_id", "-")), "/experiment?" + urlencode({"id": str(experiment.get("experiment_id", ""))}))
+            if experiment is not None
+            else "-"
+        )
+        external_output_rows.append(
+            [
+                link(item["task_id"], "/task?" + urlencode({"id": item["task_id"]})),
+                escape(item["delivery_class"]),
+                escape(format_dt(item["updated_at"])),
+                experiment_cell,
+                escape(item["delivery_summary"]),
+            ]
+        )
+
+    experiment_record_rows = []
+    for item in outcomes["experiment_records"]:
+        experiment_record_rows.append(
+            [
+                link(str(item.get("experiment_id", "-")), "/experiment?" + urlencode({"id": str(item.get("experiment_id", ""))})),
+                escape(str(item.get("status", "-"))),
+                escape(str(item.get("source_type", "-"))),
+                escape(str(item.get("source_id", "-"))),
+                escape(str(item.get("metric_name", "-"))),
+                escape(str(item.get("current_value", "-")) or "-"),
+                escape(str(item.get("target_value", "-")) or "-"),
             ]
         )
 
@@ -1966,6 +2036,23 @@ def render_summary(state: dict, message: str) -> bytes:
           <li>当前系统更强的是流程与探索，真实收入/流量结果仍需继续补。</li>
         </ul>
       </div>
+    </div>
+    <div class="row two">
+      <div class="panel">
+        <h2>内部系统产出</h2>
+        <div class="muted">主要看团队给自己造了什么能力、修了什么机制、补了什么基础设施。</div>
+        {table(['Task', '交付类型', 'Closed At', '产出摘要'], internal_output_rows)}
+      </div>
+      <div class="panel">
+        <h2>对外产品产出</h2>
+        <div class="muted">主要看面向用户或市场的问题定义、规格固化和产品方向性交付，而不是内部回归。</div>
+        {table(['Task', '交付类型', 'Closed At', '关联实验', '产出摘要'], external_output_rows)}
+      </div>
+    </div>
+    <div class="panel">
+      <h2>经营实验产出</h2>
+      <div class="muted">这里看的是已经被正式登记的商业化实验，而不是仍停留在机会池里的建议。</div>
+      {table(['Experiment', 'Status', 'Source Type', 'Source', 'Metric', 'Current', 'Target'], experiment_record_rows)}
     </div>
     <div class="row two">
       <div class="panel">
@@ -3249,6 +3336,8 @@ def build_handler(config: AppConfig):
                         "closed_total": state["outcomes"]["closed_total"],
                         "closed_product_like": state["outcomes"]["closed_product_like"],
                         "closed_regressions": state["outcomes"]["closed_regressions"],
+                        "closed_internal": state["outcomes"]["closed_internal"],
+                        "closed_external": state["outcomes"]["closed_external"],
                         "experiments_total": state["outcomes"]["experiments_total"],
                         "experiments_with_results": state["outcomes"]["experiments_with_results"],
                         "evolution_summary": state["outcomes"]["evolution_summary"],
