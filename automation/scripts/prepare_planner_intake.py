@@ -12,7 +12,7 @@ from query_task_registry import PRIORITY_ORDER, parse_dt
 from update_task_registry import load_registry
 
 
-TARGET_STATES = {"Intake", "Replan"}
+TARGET_STATES = {"Intake", "Replan", "Scoped"}
 
 
 def normalize_list(value: Any) -> list[str]:

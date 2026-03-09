@@ -7,7 +7,7 @@
 流程：
 
 1. 先运行：
-   - `python3 scripts/prepare_planner_intake.py --registry-path __OPENCLAW_HOME__/workspace-aic-captain/tasks/registry.json --handoffs-dir __OPENCLAW_HOME__/workspace-aic-captain/handoffs --packet-dir intake --owner aic-planner --state Intake --state Replan --limit 3 --format md`
+   - `python3 scripts/prepare_planner_intake.py --registry-path __OPENCLAW_HOME__/workspace-aic-captain/tasks/registry.json --handoffs-dir __OPENCLAW_HOME__/workspace-aic-captain/handoffs --packet-dir intake --owner aic-planner --state Intake --state Replan --state Scoped --limit 3 --format md`
 2. 若没有待消费任务：
    - 写执行日志到 `data/exec-logs/planner-intake/`
    - 日志包含：`- Status: no-op`
