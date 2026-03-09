@@ -179,6 +179,37 @@ def required_task_fields(task: dict) -> int:
     return score
 
 
+def parse_float(value: object) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def task_self_sustainability_score(task: dict) -> float | None:
+    notes = task.get("notes")
+    if not isinstance(notes, list):
+        return None
+    for item in notes:
+        if not isinstance(item, str):
+            continue
+        if not item.startswith("self_sustainability_score="):
+            continue
+        return parse_float(item.split("=", 1)[1].strip())
+    return None
+
+
+def task_track_count(task: dict) -> int:
+    tags = task.get("tags")
+    if not isinstance(tags, list):
+        return 0
+    return len([item for item in tags if isinstance(item, str) and item.startswith("track:")])
+
+
 def average(values: list[float]) -> float | None:
     if not values:
         return None
@@ -396,6 +427,33 @@ def compute_research_quality(opportunities: list[dict]) -> int | None:
     return clamp_score(avg * 100)
 
 
+def compute_north_star_opportunity_score(opportunities: list[dict]) -> int | None:
+    values = [parse_float(item.get("self_sustainability_score")) for item in opportunities]
+    filtered = [value for value in values if value is not None]
+    avg = average(filtered)
+    if avg is None:
+        return None
+    return clamp_score(avg * 100)
+
+
+def compute_task_alignment_score(tasks: list[dict]) -> int | None:
+    score_values: list[float] = []
+    for task in tasks:
+        score = task_self_sustainability_score(task)
+        if score is not None:
+            score_values.append(score)
+    avg_score = average(score_values)
+    if avg_score is not None:
+        return clamp_score(avg_score * 100)
+
+    track_values = [task_track_count(task) for task in tasks]
+    if not track_values:
+        return None
+    if max(track_values) == 0:
+        return None
+    return clamp_score(min(1.0, average(track_values) / 2) * 100)
+
+
 def build_agent_context(
     agent_id: str,
     role_rules: dict,
@@ -607,6 +665,35 @@ def score_quality(agent_id: str, context: dict, period: str) -> tuple[int | None
             metrics.append({"metric_id": "research_evidence_quality", "group": "quality", "value": len(context["research_opportunities"]), "score": research_quality})
             if research_quality >= 80:
                 notes.append("研究证据质量较好")
+        north_star_score = compute_north_star_opportunity_score(context["research_opportunities"])
+        if north_star_score is not None:
+            scores.append(north_star_score)
+            metrics.append({"metric_id": "research_north_star_alignment", "group": "quality", "value": len(context["research_opportunities"]), "score": north_star_score})
+            if north_star_score >= 75:
+                notes.append("研究机会更贴近自养方向")
+
+    if agent_id == "aic-captain":
+        captain_candidates = context["updated_owned_tasks_all"]
+        captain_score = compute_task_alignment_score(captain_candidates)
+        captain_value = len(captain_candidates)
+        if captain_score is None:
+            promoted_or_ready = [
+                item
+                for item in context["window_opportunities"]
+                if item.get("status") in {"ready_review", "promoted"}
+            ]
+            captain_candidates = promoted_or_ready or context["window_opportunities"]
+            captain_score = compute_north_star_opportunity_score(captain_candidates)
+            captain_value = len(captain_candidates)
+        if captain_score is not None:
+            scores.append(captain_score)
+            metrics.append({"metric_id": "captain_north_star_alignment", "group": "quality", "value": captain_value, "score": captain_score})
+
+    if agent_id in {"aic-planner", "aic-reviewer", "aic-dispatcher", "aic-builder", "aic-tester", "aic-releaser", "aic-reflector", "aic-curator"}:
+        task_alignment = compute_task_alignment_score(context["updated_owned_tasks_all"] or context["current_tasks"])
+        if task_alignment is not None:
+            scores.append(task_alignment)
+            metrics.append({"metric_id": "task_north_star_alignment", "group": "quality", "value": len(context["updated_owned_tasks_all"] or context["current_tasks"]), "score": task_alignment})
 
     if agent_id == "aic-builder":
         rework_count = len([task for task in context["current_tasks"] if task.get("state") == "Rework"])
