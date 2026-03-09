@@ -56,6 +56,7 @@ http://127.0.0.1:8765
 - `/tasks`：正式任务控制面
 - `/opportunities`：机会池
 - `/experiments`：商业化实验面板
+- `/experiment?id=...`：单条实验记录详情与更新
 - `/kpi`：Daily / Weekly KPI
 - `/agents`：团队拓扑与角色状态
 - `/cron`：cron 管理
@@ -74,6 +75,7 @@ http://127.0.0.1:8765
 - 更新任务的 `state / owner / priority / next_step / blocker`
 - 手动触发 `daily-kpi` / `weekly-kpi`
 - 首页与实验页会优先展示哪些任务/机会更接近自养目标，以及对应的分发路径、成功指标和止损条件
+- `/experiments` 现在不仅展示建议实验，也能查看和更新结构化实验记录
 
 ## API
 

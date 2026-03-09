@@ -188,6 +188,10 @@ class AppConfig:
         return self.captain_workspace / "data/kpi"
 
     @property
+    def experiments_path(self) -> Path:
+        return self.captain_workspace / "data/experiments/registry.json"
+
+    @property
     def skills_root(self) -> Path:
         return self.researcher_workspace / "data/skills"
 
@@ -438,6 +442,13 @@ def find_opportunity(opportunities: list[dict], opportunity_id: str) -> dict | N
     return None
 
 
+def find_experiment_record(records: list[dict], experiment_id: str) -> dict | None:
+    for item in records:
+        if item.get("experiment_id") == experiment_id:
+            return item
+    return None
+
+
 def load_tasks(config: AppConfig) -> list[dict]:
     registry = load_json(config.registry_path, {"tasks": []})
     tasks = registry["tasks"]
@@ -463,6 +474,19 @@ def load_opportunities(config: AppConfig) -> list[dict]:
         )
     )
     return opportunities
+
+
+def load_experiment_records(config: AppConfig) -> list[dict]:
+    payload = load_json(config.experiments_path, {"experiments": []})
+    experiments = payload["experiments"]
+    experiments.sort(
+        key=lambda item: (
+            str(item.get("status", "")),
+            -(parse_iso(item.get("updated_at")) or datetime.fromtimestamp(0, tz=timezone.utc)).timestamp(),
+            str(item.get("experiment_id", "")),
+        )
+    )
+    return experiments
 
 
 def task_tracks(task: dict) -> list[str]:
@@ -993,17 +1017,84 @@ def build_north_star_snapshot(state: dict) -> dict:
 
 
 def build_experiment_items(state: dict) -> list[dict]:
+    experiment_records = state.get("experiment_records", [])
+    record_by_source: dict[tuple[str, str], list[dict]] = {}
     opportunities_by_id = {
         str(item.get("opportunity_id")): item
         for item in state["opportunities"]
         if isinstance(item, dict) and isinstance(item.get("opportunity_id"), str)
     }
+    tasks_by_id = {
+        str(item.get("task_id")): item
+        for item in state["tasks"]
+        if isinstance(item, dict) and isinstance(item.get("task_id"), str)
+    }
     rows: list[dict] = []
+
+    for record in experiment_records:
+        source_type = str(record.get("source_type", ""))
+        source_id = str(record.get("source_id", ""))
+        if not source_type or not source_id:
+            continue
+        record_by_source.setdefault((source_type, source_id), []).append(record)
+
+    for record in experiment_records:
+        source_type = str(record.get("source_type", ""))
+        source_id = str(record.get("source_id", ""))
+        linked_task = tasks_by_id.get(source_id) if source_type == "task" else None
+        linked_opportunity = opportunities_by_id.get(source_id) if source_type == "opportunity" else None
+        tracks = record.get("tracks", [])
+        if not isinstance(tracks, list) or not tracks:
+            if linked_task is not None:
+                tracks = task_tracks(linked_task)
+            elif linked_opportunity is not None:
+                tracks = linked_opportunity.get("commercial_tracks", [])
+        business_model = str(record.get("business_model", "")).strip()
+        if not business_model:
+            if linked_task is not None:
+                business_model = task_note_value(linked_task, "business_model=") or ""
+            elif linked_opportunity is not None:
+                business_model = str(linked_opportunity.get("business_model_hypothesis", "")).strip()
+        self_score = None
+        if linked_task is not None:
+            self_score = task_self_sustainability_score(linked_task)
+        elif linked_opportunity is not None:
+            raw = linked_opportunity.get("self_sustainability_score")
+            if isinstance(raw, (int, float)):
+                self_score = float(raw)
+        rows.append(
+            {
+                "kind": "record",
+                "label": "实验记录",
+                "id": str(record.get("experiment_id", "-")),
+                "href": "/experiment?" + urlencode({"id": str(record.get("experiment_id", ""))}),
+                "state": str(record.get("status", "-")),
+                "owner": str(record.get("owner", "-")),
+                "tracks": tracks if isinstance(tracks, list) else [],
+                "self_score": self_score,
+                "business_model": business_model or "-",
+                "distribution_paths": record.get("distribution_paths", []) if isinstance(record.get("distribution_paths"), list) else [],
+                "success_indicator": str(record.get("metric_name", "")).strip() or ((linked_opportunity.get("success_indicators") or ["-"])[0] if linked_opportunity and isinstance(linked_opportunity.get("success_indicators"), list) else "-"),
+                "stop_condition": str(record.get("stop_decision", "")).strip() or "-",
+                "next_step": str(record.get("next_step", "")),
+                "source_type": source_type,
+                "source_id": source_id,
+                "title": str(record.get("title", "")),
+                "hypothesis_type": str(record.get("hypothesis_type", "-")),
+                "hypothesis": str(record.get("hypothesis", "")),
+                "target_value": str(record.get("target_value", "")),
+                "current_value": str(record.get("current_value", "")),
+                "unit": str(record.get("unit", "")),
+                "result_summary": str(record.get("result_summary", "")),
+            }
+        )
 
     for task in state["active_tasks"]:
         tracks = task_tracks(task)
         self_score = task_self_sustainability_score(task)
         task_id = str(task.get("task_id", ""))
+        if record_by_source.get(("task", task_id)):
+            continue
         linked_opportunity = None
         if task_id.startswith("TASK-OPP-"):
             linked_opportunity = opportunities_by_id.get(task_id.replace("TASK-", "", 1))
@@ -1026,7 +1117,7 @@ def build_experiment_items(state: dict) -> list[dict]:
         rows.append(
             {
                 "kind": "task",
-                "label": "正式实验",
+                "label": "建议实验",
                 "id": task_id,
                 "href": "/task?" + urlencode({"id": task_id}),
                 "state": str(task.get("state", "-")),
@@ -1038,20 +1129,24 @@ def build_experiment_items(state: dict) -> list[dict]:
                 "success_indicator": success_indicators[0] if isinstance(success_indicators, list) and success_indicators else "-",
                 "stop_condition": stop_conditions[0] if isinstance(stop_conditions, list) and stop_conditions else "-",
                 "next_step": str(task.get("next_step", "")),
+                "title": str(task.get("title", "")),
             }
         )
 
     for opportunity in state["opportunities"]:
         if opportunity.get("status") not in {"ready_review", "candidate"}:
             continue
+        opportunity_id = str(opportunity.get("opportunity_id", "-"))
+        if record_by_source.get(("opportunity", opportunity_id)):
+            continue
         raw = opportunity.get("self_sustainability_score")
         self_score = float(raw) if isinstance(raw, (int, float)) else None
         rows.append(
             {
                 "kind": "opportunity",
-                "label": "待验证机会",
-                "id": str(opportunity.get("opportunity_id", "-")),
-                "href": "/opportunity?" + urlencode({"id": str(opportunity.get("opportunity_id", ""))}),
+                "label": "建议实验",
+                "id": opportunity_id,
+                "href": "/opportunity?" + urlencode({"id": opportunity_id}),
                 "state": str(opportunity.get("status", "-")),
                 "owner": "aic-researcher",
                 "tracks": opportunity.get("commercial_tracks", []),
@@ -1061,12 +1156,13 @@ def build_experiment_items(state: dict) -> list[dict]:
                 "success_indicator": (opportunity.get("success_indicators") or ["-"])[0] if isinstance(opportunity.get("success_indicators"), list) else "-",
                 "stop_condition": (opportunity.get("stop_conditions") or ["-"])[0] if isinstance(opportunity.get("stop_conditions"), list) else "-",
                 "next_step": str(opportunity.get("recommended_action", "-")),
+                "title": str(opportunity.get("title", "")),
             }
         )
 
     rows.sort(
         key=lambda item: (
-            0 if item["kind"] == "task" else 1,
+            0 if item["kind"] == "record" else 1,
             -(item["self_score"] or 0),
             item["id"],
         )
@@ -1121,6 +1217,7 @@ def assemble_state(
         "failed_jobs": failed_jobs,
         "recent_handoffs": recent_handoffs,
         "recent_logs": recent_logs,
+        "experiment_records": load_experiment_records(config),
         "runtime_ready": runtime_ready,
         "runtime_source": runtime_source,
     }
@@ -1205,6 +1302,7 @@ def compute_state(config: AppConfig) -> dict:
         "failed_jobs": failed_jobs,
         "recent_handoffs": load_recent_handoffs(config),
         "recent_logs": load_recent_logs(config),
+        "experiment_records": load_experiment_records(config),
         "runtime_ready": True,
         "runtime_source": "full-runtime",
     }
@@ -1772,9 +1870,46 @@ def render_opportunities(state: dict, message: str) -> bytes:
 
 
 def render_experiments(state: dict, message: str) -> bytes:
-    rows = []
-    for item in state["experiments"]:
-        rows.append(
+    query = state["query"]
+    source_type_prefill = query.get("source_type", [""])[0]
+    source_id_prefill = query.get("source_id", [""])[0]
+    title_prefill = query.get("title", [""])[0]
+    records = [item for item in state["experiments"] if item["kind"] == "record"]
+    suggestions = [item for item in state["experiments"] if item["kind"] != "record"]
+
+    record_rows = []
+    for item in records:
+        metric_value = item["current_value"]
+        target_value = item["target_value"]
+        metric_text = item["success_indicator"]
+        if metric_value and target_value:
+            metric_text = f"{metric_value} / {target_value} {item['unit']}".strip()
+        source_href = f"/{item['source_type']}?id={item['source_id']}" if item["source_type"] in {"task", "opportunity"} else ""
+        source_cell = link(item["source_id"], source_href) if source_href else escape(item["source_id"])
+        record_rows.append(
+            [
+                link(item["id"], item["href"]),
+                escape(item["source_type"]),
+                source_cell,
+                escape(item["state"]),
+                escape(item["hypothesis_type"]),
+                escape(track_labels(item["tracks"])),
+                escape(metric_text),
+                escape(item["stop_condition"]),
+                escape(item["next_step"]),
+            ]
+        )
+
+    suggestion_rows = []
+    for item in suggestions:
+        create_link = "/experiments?" + urlencode(
+            {
+                "source_type": "task" if item["kind"] == "task" else "opportunity",
+                "source_id": item["id"],
+                "title": item.get("title") or item["id"],
+            }
+        )
+        suggestion_rows.append(
             [
                 escape(item["label"]),
                 link(item["id"], item["href"]),
@@ -1786,11 +1921,220 @@ def render_experiments(state: dict, message: str) -> bytes:
                 escape("；".join(item["distribution_paths"]) if item["distribution_paths"] else "-"),
                 escape(item["success_indicator"]),
                 escape(item["stop_condition"]),
-                escape(item["next_step"]),
+                link("创建实验", create_link),
             ]
         )
-    body = f"<div class=\"panel\"><h2>商业化实验面板</h2>{table(['类型', '对象', '阶段', '负责人', '商业轨道', '自养分', '商业模式', '分发路径', '成功指标', '止损条件', '下一步'], rows)}</div>"
+
+    create_form = f"""
+    <div class="panel">
+      <h2>创建实验记录</h2>
+      <form method="post" action="/actions/create-experiment">
+        <input type="hidden" name="next" value="/experiments">
+        <div class="form-grid">
+          <div>
+            <label>Source Type</label>
+            {select_html("source_type", ["task", "opportunity"], source_type_prefill)}
+          </div>
+          <div>
+            <label>Source ID</label>
+            {input_html("source_id", source_id_prefill, "TASK-... / OPP-...")}
+          </div>
+          <div class="full">
+            <label>Title</label>
+            {input_html("title", title_prefill, "例如：验证首批付费意愿")}
+          </div>
+          <div>
+            <label>Hypothesis Type</label>
+            {select_html("hypothesis_type", ["revenue", "distribution", "pricing", "cost", "automation_fit", "influence", "other"], "revenue")}
+          </div>
+          <div>
+            <label>Status</label>
+            {select_html("status", ["planned", "running", "validated", "invalidated", "inconclusive", "paused", "stopped", "archived"], "planned")}
+          </div>
+          <div>
+            <label>Owner</label>
+            {select_html("owner", OWNER_OPTIONS, "aic-captain")}
+          </div>
+          <div>
+            <label>Metric Name</label>
+            {input_html("metric_name", "", "例如：首批付费用户数")}
+          </div>
+          <div>
+            <label>Target Value</label>
+            {input_html("target_value", "", "例如：10")}
+          </div>
+          <div>
+            <label>Unit</label>
+            {input_html("unit", "", "users / uv / usd")}
+          </div>
+          <div>
+            <label>Track</label>
+            {input_html("track", "", "cashflow / ads / oss_influence / compound_asset")}
+          </div>
+          <div>
+            <label>Distribution Path</label>
+            {input_html("distribution_path", "", "SEO / 搜索流量")}
+          </div>
+          <div>
+            <label>Success Indicator</label>
+            {input_html("success_indicator", "", "例如：首批付费用户数")}
+          </div>
+          <div>
+            <label>Stop Condition</label>
+            {input_html("stop_condition", "", "例如：30天内无有效信号则停止")}
+          </div>
+          <div class="full">
+            <label>Hypothesis</label>
+            {textarea_html("hypothesis", "", "例如：用户愿意为该工具的小额订阅付费", 3)}
+          </div>
+          <div class="full">
+            <label>Business Model</label>
+            {textarea_html("business_model", "", "例如：低价订阅 / 广告 / 开源转化", 2)}
+          </div>
+          <div class="full">
+            <label>Next Step</label>
+            {textarea_html("next_step", "", "下一步怎么验证", 2)}
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button type="submit">创建实验</button>
+        </div>
+      </form>
+    </div>
+    """
+
+    body = (
+        create_form
+        + f"<div class=\"panel\"><h2>实验记录</h2>{table(['Experiment', 'Source Type', 'Source', 'Status', 'Hypothesis Type', 'Tracks', 'Metric / Result', 'Decision', 'Next Step'], record_rows)}</div>"
+        + f"<div class=\"panel\"><h2>待立项建议</h2>{table(['类型', '对象', '阶段', '负责人', '商业轨道', '自养分', '商业模式', '分发路径', '成功指标', '止损条件', '动作'], suggestion_rows)}</div>"
+    )
     return layout("Experiments", body, "/experiments", message)
+
+
+def render_experiment_detail(state: dict, experiment: dict, message: str) -> bytes:
+    config: AppConfig = state["config"]
+    evidence = experiment.get("evidence", [])
+    if not isinstance(evidence, list):
+        evidence = []
+    tracks = experiment.get("tracks", [])
+    distribution_paths = experiment.get("distribution_paths", [])
+    success_indicators = experiment.get("success_indicators", [])
+    stop_conditions = experiment.get("stop_conditions", [])
+    details = render_kv_table(
+        "实验详情",
+        [
+            ("experiment_id", escape(experiment.get("experiment_id", "-"))),
+            ("source_type", escape(experiment.get("source_type", "-"))),
+            ("source_id", escape(experiment.get("source_id", "-"))),
+            ("title", escape(experiment.get("title", "-"))),
+            ("status", escape(experiment.get("status", "-"))),
+            ("owner", escape(experiment.get("owner", "-"))),
+            ("hypothesis_type", escape(experiment.get("hypothesis_type", "-"))),
+            ("hypothesis", escape(experiment.get("hypothesis", "-"))),
+            ("metric_name", escape(experiment.get("metric_name", "-"))),
+            ("target_value", escape(experiment.get("target_value", "-"))),
+            ("current_value", escape(experiment.get("current_value", "-"))),
+            ("unit", escape(experiment.get("unit", "-"))),
+            ("business_model", escape(experiment.get("business_model", "-"))),
+            ("tracks", escape(track_labels(tracks if isinstance(tracks, list) else []))),
+            ("distribution_paths", escape("；".join(distribution_paths) if isinstance(distribution_paths, list) else "-")),
+            ("success_indicators", escape("；".join(success_indicators) if isinstance(success_indicators, list) else "-")),
+            ("stop_conditions", escape("；".join(stop_conditions) if isinstance(stop_conditions, list) else "-")),
+            ("stop_decision", escape(experiment.get("stop_decision", "-"))),
+            ("result_summary", escape(experiment.get("result_summary", "-"))),
+            ("next_step", escape(experiment.get("next_step", "-"))),
+            ("evidence", evidence_links(config, evidence)),
+        ],
+    )
+    track_value = tracks[0] if isinstance(tracks, list) and tracks else ""
+    distribution_path_value = distribution_paths[0] if isinstance(distribution_paths, list) and distribution_paths else ""
+    success_indicator_value = success_indicators[0] if isinstance(success_indicators, list) and success_indicators else ""
+    stop_condition_value = stop_conditions[0] if isinstance(stop_conditions, list) and stop_conditions else ""
+    update_form = f"""
+    <div class="panel">
+      <h2>更新实验</h2>
+      <form method="post" action="/actions/update-experiment">
+        <input type="hidden" name="experiment_id" value="{escape(experiment.get('experiment_id', ''))}">
+        <input type="hidden" name="next" value="/experiment?id={escape(experiment.get('experiment_id', ''))}">
+        <div class="form-grid">
+          <div>
+            <label>Status</label>
+            {select_html("status", ["planned", "running", "validated", "invalidated", "inconclusive", "paused", "stopped", "archived"], str(experiment.get("status", "")))}
+          </div>
+          <div>
+            <label>Owner</label>
+            {select_html("owner", OWNER_OPTIONS, str(experiment.get("owner", "")))}
+          </div>
+          <div>
+            <label>Metric Name</label>
+            {input_html("metric_name", str(experiment.get("metric_name", "")), "指标名")}
+          </div>
+          <div>
+            <label>Target Value</label>
+            {input_html("target_value", str(experiment.get("target_value", "")), "目标值")}
+          </div>
+          <div>
+            <label>Current Value</label>
+            {input_html("current_value", str(experiment.get("current_value", "")), "当前值")}
+          </div>
+          <div>
+            <label>Unit</label>
+            {input_html("unit", str(experiment.get("unit", "")), "单位")}
+          </div>
+          <div>
+            <label>Stop Decision</label>
+            {select_html("stop_decision", ["continue", "pivot", "stop", "scale", "observe"], str(experiment.get("stop_decision", "")))}
+          </div>
+          <div>
+            <label>Track</label>
+            {input_html("track", track_value, "cashflow / ads / oss_influence / compound_asset")}
+          </div>
+          <div>
+            <label>Distribution Path</label>
+            {input_html("distribution_path", distribution_path_value, "SEO / 搜索流量")}
+          </div>
+          <div>
+            <label>Success Indicator</label>
+            {input_html("success_indicator", success_indicator_value, "成功指标")}
+          </div>
+          <div>
+            <label>Stop Condition</label>
+            {input_html("stop_condition", stop_condition_value, "止损条件")}
+          </div>
+          <div class="full">
+            <label>Hypothesis</label>
+            {textarea_html("hypothesis", str(experiment.get("hypothesis", "")), "假设", 3)}
+          </div>
+          <div class="full">
+            <label>Business Model</label>
+            {textarea_html("business_model", str(experiment.get("business_model", "")), "商业模式", 2)}
+          </div>
+          <div class="full">
+            <label>Result Summary</label>
+            {textarea_html("result_summary", str(experiment.get("result_summary", "")), "结果摘要", 3)}
+          </div>
+          <div class="full">
+            <label>Next Step</label>
+            {textarea_html("next_step", str(experiment.get("next_step", "")), "下一步", 2)}
+          </div>
+          <div class="full">
+            <label>Append Evidence</label>
+            {input_html("append_evidence", "", "可填 URL 或文件路径")}
+          </div>
+          <div class="full">
+            <label>Append Note</label>
+            {input_html("append_note", "", "补充说明")}
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <label><input style="width:auto" type="checkbox" name="mark_started" value="1"> mark started</label>
+          <label><input style="width:auto" type="checkbox" name="mark_completed" value="1"> mark completed</label>
+          <button type="submit">更新实验</button>
+        </div>
+      </form>
+    </div>
+    """
+    return layout(f"Experiment {experiment.get('experiment_id', '-')}", details + update_form, "/experiments", message)
 
 
 def render_agents(state: dict, message: str) -> bytes:
@@ -2301,6 +2645,7 @@ def render_task_detail(state: dict, task: dict, message: str) -> bytes:
           <input type="hidden" name="next" value="/task?id={escape(task['task_id'])}">
           <button type="submit">刷新看板</button>
         </form>
+        <a href="/experiments?source_type=task&source_id={escape(task['task_id'])}&title={escape(task.get('title', ''))}">创建实验记录</a>
       </div>
     </div>
     """
@@ -2363,6 +2708,16 @@ def render_opportunity_detail(state: dict, opportunity: dict, message: str) -> b
               <input type="hidden" name="next" value="/opportunity?id={escape(opportunity.get('opportunity_id', ''))}">
               <button type="submit">晋升为正式任务</button>
             </form>
+            <a href="/experiments?source_type=opportunity&source_id={escape(opportunity.get('opportunity_id', ''))}&title={escape(opportunity.get('title', ''))}">创建实验记录</a>
+          </div>
+        </div>
+        """
+    else:
+        actions = f"""
+        <div class="panel">
+          <h2>快捷操作</h2>
+          <div class="actions">
+            <a href="/experiments?source_type=opportunity&source_id={escape(opportunity.get('opportunity_id', ''))}&title={escape(opportunity.get('title', ''))}">创建实验记录</a>
           </div>
         </div>
         """
@@ -2452,6 +2807,14 @@ def build_handler(config: AppConfig):
             if parsed.path == "/experiments":
                 html_response(self, render_experiments(state, message))
                 return
+            if parsed.path == "/experiment":
+                experiment_id = query.get("id", [""])[0]
+                experiment = find_experiment_record(state["experiment_records"], experiment_id)
+                if experiment is None:
+                    json_response(self, {"ok": False, "error": "experiment not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                html_response(self, render_experiment_detail(state, experiment, message))
+                return
             if parsed.path == "/kpi":
                 html_response(self, render_kpi(state, message))
                 return
@@ -2526,6 +2889,14 @@ def build_handler(config: AppConfig):
                 return
             if parsed.path == "/api/experiments":
                 json_response(self, state["experiments"])
+                return
+            if parsed.path == "/api/experiment":
+                experiment_id = query.get("id", [""])[0]
+                experiment = find_experiment_record(state["experiment_records"], experiment_id)
+                if experiment is None:
+                    json_response(self, {"ok": False, "error": "experiment not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                json_response(self, experiment)
                 return
             if parsed.path == "/api/opportunity":
                 opportunity_id = query.get("id", [""])[0]
@@ -2710,6 +3081,95 @@ def build_handler(config: AppConfig):
                 invalidate_command_cache()
                 invalidate_state_cache()
                 message = result["stdout"] or result["stderr"] or f"task updated: {task_id}"
+                redirect_with_message(self, next_location, str(message))
+                return
+
+            if parsed.path == "/actions/create-experiment":
+                script_path = config.captain_workspace / "scripts/update_experiment_registry.py"
+                command = ["python3", str(script_path), "--path", str(config.experiments_path)]
+                for field_name, flag in [
+                    ("source_type", "--source-type"),
+                    ("source_id", "--source-id"),
+                    ("title", "--title"),
+                    ("owner", "--owner"),
+                    ("status", "--status"),
+                    ("hypothesis_type", "--hypothesis-type"),
+                    ("hypothesis", "--hypothesis"),
+                    ("metric_name", "--metric-name"),
+                    ("target_value", "--target-value"),
+                    ("unit", "--unit"),
+                    ("business_model", "--business-model"),
+                    ("next_step", "--next-step"),
+                ]:
+                    value = form.get(field_name, [""])[0].strip()
+                    if value:
+                        command.extend([flag, value])
+                track_value = form.get("track", [""])[0].strip()
+                distribution_path_value = form.get("distribution_path", [""])[0].strip()
+                success_indicator_value = form.get("success_indicator", [""])[0].strip()
+                stop_condition_value = form.get("stop_condition", [""])[0].strip()
+                if track_value:
+                    command.extend(["--append-track", track_value])
+                if distribution_path_value:
+                    command.extend(["--append-distribution-path", distribution_path_value])
+                if success_indicator_value:
+                    command.extend(["--append-success-indicator", success_indicator_value])
+                if stop_condition_value:
+                    command.extend(["--append-stop-condition", stop_condition_value])
+                result = run_command(command)
+                invalidate_state_cache()
+                message = result["stdout"] or result["stderr"] or "experiment created"
+                redirect_with_message(self, next_location, str(message))
+                return
+
+            if parsed.path == "/actions/update-experiment":
+                experiment_id = form.get("experiment_id", [""])[0].strip()
+                if not experiment_id:
+                    redirect_with_message(self, next_location, "missing experiment id")
+                    return
+                script_path = config.captain_workspace / "scripts/update_experiment_registry.py"
+                command = ["python3", str(script_path), "--path", str(config.experiments_path), "--experiment-id", experiment_id]
+                for field_name, flag in [
+                    ("owner", "--owner"),
+                    ("status", "--status"),
+                    ("metric_name", "--metric-name"),
+                    ("target_value", "--target-value"),
+                    ("current_value", "--current-value"),
+                    ("unit", "--unit"),
+                    ("stop_decision", "--stop-decision"),
+                    ("hypothesis", "--hypothesis"),
+                    ("business_model", "--business-model"),
+                    ("result_summary", "--result-summary"),
+                    ("next_step", "--next-step"),
+                ]:
+                    value = form.get(field_name, [""])[0].strip()
+                    if value:
+                        command.extend([flag, value])
+                track_value = form.get("track", [""])[0].strip()
+                distribution_path_value = form.get("distribution_path", [""])[0].strip()
+                success_indicator_value = form.get("success_indicator", [""])[0].strip()
+                stop_condition_value = form.get("stop_condition", [""])[0].strip()
+                append_evidence_value = form.get("append_evidence", [""])[0].strip()
+                append_note_value = form.get("append_note", [""])[0].strip()
+                if track_value:
+                    command.extend(["--append-track", track_value])
+                if distribution_path_value:
+                    command.extend(["--append-distribution-path", distribution_path_value])
+                if success_indicator_value:
+                    command.extend(["--append-success-indicator", success_indicator_value])
+                if stop_condition_value:
+                    command.extend(["--append-stop-condition", stop_condition_value])
+                if append_evidence_value:
+                    command.extend(["--append-evidence", append_evidence_value])
+                if append_note_value:
+                    command.extend(["--append-note", append_note_value])
+                if "mark_started" in form:
+                    command.append("--mark-started")
+                if "mark_completed" in form:
+                    command.append("--mark-completed")
+                result = run_command(command)
+                invalidate_state_cache()
+                message = result["stdout"] or result["stderr"] or f"experiment updated: {experiment_id}"
                 redirect_with_message(self, next_location, str(message))
                 return
 
