@@ -6,6 +6,7 @@ import argparse
 import html
 import json
 import subprocess
+import threading
 import time
 from collections import Counter
 from dataclasses import dataclass
@@ -112,10 +113,13 @@ CORE_JOB_NAMES = {
 
 ALERT_STALE_HOURS = 6
 ALERT_CRITICAL_STALE_HOURS = 24
-COMMAND_CACHE_TTL_SECONDS = 5.0
+COMMAND_CACHE_TTL_SECONDS = 20.0
 COMMAND_CACHE: dict[str, tuple[float, dict]] = {}
-STATE_CACHE_TTL_SECONDS = 10.0
+STATE_CACHE_TTL_SECONDS = 30.0
 STATE_CACHE: dict[str, tuple[float, dict]] = {}
+CACHE_PREWARM_INTERVAL_SECONDS = 20.0
+CACHE_LOCK = threading.Lock()
+STATE_REFRESHING: set[str] = set()
 
 
 @dataclass(frozen=True)
@@ -279,27 +283,31 @@ def run_json_command(command: list[str]) -> dict:
 
 
 def run_cached_json_command(cache_key: str, command: list[str], ttl_seconds: float = COMMAND_CACHE_TTL_SECONDS) -> dict:
-    cached = COMMAND_CACHE.get(cache_key)
+    with CACHE_LOCK:
+        cached = COMMAND_CACHE.get(cache_key)
     now = time.monotonic()
     if cached is not None and now - cached[0] < ttl_seconds:
         return cached[1]
     payload = run_json_command(command)
-    COMMAND_CACHE[cache_key] = (now, payload)
+    with CACHE_LOCK:
+        COMMAND_CACHE[cache_key] = (now, payload)
     return payload
 
 
 def invalidate_command_cache(cache_key: str | None = None) -> None:
-    if cache_key is None:
-        COMMAND_CACHE.clear()
-        return
-    COMMAND_CACHE.pop(cache_key, None)
+    with CACHE_LOCK:
+        if cache_key is None:
+            COMMAND_CACHE.clear()
+            return
+        COMMAND_CACHE.pop(cache_key, None)
 
 
 def invalidate_state_cache(cache_key: str | None = None) -> None:
-    if cache_key is None:
-        STATE_CACHE.clear()
-        return
-    STATE_CACHE.pop(cache_key, None)
+    with CACHE_LOCK:
+        if cache_key is None:
+            STATE_CACHE.clear()
+            return
+        STATE_CACHE.pop(cache_key, None)
 
 
 def run_command(command: list[str]) -> dict[str, object]:
@@ -873,13 +881,7 @@ def find_kpi_scorecard(report: dict | None, agent_id: str) -> dict | None:
     return None
 
 
-def build_state(config: AppConfig) -> dict:
-    cache_key = str(config.openclaw_home.resolve())
-    cached = STATE_CACHE.get(cache_key)
-    now = time.monotonic()
-    if cached is not None and now - cached[0] < STATE_CACHE_TTL_SECONDS:
-        return dict(cached[1])
-
+def compute_state(config: AppConfig) -> dict:
     tasks = load_tasks(config)
     opportunities = load_opportunities(config)
     agents = load_agents()
@@ -924,8 +926,52 @@ def build_state(config: AppConfig) -> dict:
         "weekly_path": weekly_kpi_path,
         "weekly_report": load_kpi_report(weekly_kpi_path),
     }
-    STATE_CACHE[cache_key] = (now, state)
-    return dict(state)
+    return state
+
+
+def refresh_state_cache(config: AppConfig) -> dict:
+    cache_key = str(config.openclaw_home.resolve())
+    try:
+        state = compute_state(config)
+        with CACHE_LOCK:
+            STATE_CACHE[cache_key] = (time.monotonic(), state)
+        return dict(state)
+    finally:
+        with CACHE_LOCK:
+            STATE_REFRESHING.discard(cache_key)
+
+
+def schedule_state_refresh(config: AppConfig) -> None:
+    cache_key = str(config.openclaw_home.resolve())
+    with CACHE_LOCK:
+        if cache_key in STATE_REFRESHING:
+            return
+        STATE_REFRESHING.add(cache_key)
+
+    thread = threading.Thread(target=refresh_state_cache, args=(config,), daemon=True)
+    thread.start()
+
+
+def build_state(config: AppConfig) -> dict:
+    cache_key = str(config.openclaw_home.resolve())
+    with CACHE_LOCK:
+        cached = STATE_CACHE.get(cache_key)
+    now = time.monotonic()
+    if cached is None:
+        return refresh_state_cache(config)
+    if now - cached[0] < STATE_CACHE_TTL_SECONDS:
+        return dict(cached[1])
+    schedule_state_refresh(config)
+    return dict(cached[1])
+
+
+def prewarm_loop(config: AppConfig) -> None:
+    while True:
+        with CACHE_LOCK:
+            cached = STATE_CACHE.get(str(config.openclaw_home.resolve()))
+        if cached is None or time.monotonic() - cached[0] >= CACHE_PREWARM_INTERVAL_SECONDS:
+            schedule_state_refresh(config)
+        time.sleep(CACHE_PREWARM_INTERVAL_SECONDS)
 
 
 def table(headers: list[str], rows: list[list[str]]) -> str:
@@ -2131,6 +2177,8 @@ def main() -> int:
         port=args.port,
     )
 
+    refresh_state_cache(config)
+    threading.Thread(target=prewarm_loop, args=(config,), daemon=True).start()
     server = ThreadingHTTPServer((config.host, config.port), build_handler(config))
     print(f"control-plane listening on http://{config.host}:{config.port}")
     print(f"openclaw_home={config.openclaw_home}")
