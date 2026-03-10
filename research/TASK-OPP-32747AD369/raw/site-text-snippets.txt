@@ -1,0 +1,107 @@
+
+## homepage: data/exec-logs/research-sprint/20260310-124642-agent-safehouse.dev.html
+
+### first_lines
+- macOS-native sandboxing for local agents. Move fast, break nothing.
+- chance of disaster makes it a matter of
+- a fine-tuned MacBook Pro, crafted to perfection
+- chance — enforced by the kernel.
+- Safehouse denies write access outside your project directory. The kernel blocks the syscall before any file is touched.
+- rm: ~/: Operation not permitted
+- Tested against all leading
+- All agents work perfectly in their sandboxes, but can't impact anything outside it.
+- Agents inherit your full user permissions. Safehouse flips this — nothing is accessible unless explicitly granted.
+- Download a single shell script, make it executable, and run your agent inside it. No build step, no dependencies — just Bash and macOS.
+- # 1. Download safehouse (single self-contained script)
+- https://raw.githubusercontent.com/eugene1g/agent-safehouse/main/dist/safehouse.sh
+- # 2. Run any agent inside Safehouse
+- --dangerously-skip-permissions
+- Safehouse automatically grants read/write access to the selected workdir (git root by default) and read access to your installed toolchains. Most of your home directory — SSH keys, other repos, personal files — is denied by the kernel.
+- See it fail — proof the sandbox works
+- Try reading something sensitive inside safehouse. The kernel blocks it before the process ever sees the data.
+- # Try to read your SSH private key — denied by the kernel
+- # cat: /Users/you/.ssh/id_ed25519: Operation not permitted
+- # Try to list another repo — invisible
+- # ls: /Users/you/other-project: Operation not permitted
+- # But your current project works fine
+- # README.md src/ package.json ...
+- Safe by default with shell functions
+- Add these to your shell config and every agent runs inside Safehouse automatically — you don't have to remember. To run without the sandbox, use
+- # Sandboxed — the default. Just type the command name.
+- --dangerously-skip-permissions
+- --dangerously-bypass-approvals-and-sandbox
+- # Unsandboxed — bypass the function with `command`
+- # command claude — plain interactive session
+
+### keyword_hits
+
+[sandbox-exec] 2 hits; sample:
+- Use a ready-made prompt that tells Claude, Codex, Gemini, or another model to inspect the real Safehouse profile templates, ask about your home directory and toolchain, and generate a least-privilege `sandbox-exec` profile for your setup.
+- ~/.config/sandbox-exec.profile
+
+[kernel] 5 hits; sample:
+- chance — enforced by the kernel.
+- Safehouse denies write access outside your project directory. The kernel blocks the syscall before any file is touched.
+- Safehouse automatically grants read/write access to the selected workdir (git root by default) and read access to your installed toolchains. Most of your home directory — SSH keys, other repos, personal files — is denied by the kernel.
+- Try reading something sensitive inside safehouse. The kernel blocks it before the process ever sees the data.
+- # Try to read your SSH private key — denied by the kernel
+
+## docs: data/exec-logs/research-sprint/20260310-124722-site-docs.html
+
+### first_lines
+- Generate a Custom Profile with an LLM
+- Debugging Sandbox Denials
+- This is the complete documentation for Agent Safehouse.
+- If you are new, follow this order:
+- Generate a Custom Profile with an LLM
+- Then go deeper as needed:
+- Debugging Sandbox Denials
+- Research and compatibility reports:
+- Open source under the Apache 2.0 License.
+
+### keyword_hits
+
+## policy-builder: data/exec-logs/research-sprint/20260310-124722-site-policy-builder.html
+
+### first_lines
+- Policy Builder | Agent Safehouse
+- Build your own Safehouse policy
+- Pick your coding agents, optional capabilities, and file system access in plain language. The builder creates a sandbox policy you can copy or download without hand-editing policy files.
+- View policy modules on GitHub
+- Pick which coding assistants this policy should support.
+- These are included for compatibility. Java, Perl, and PHP are shown last.
+- Access outside your project
+- Enable only the optional capabilities your agents actually need.
+- Start with baseline paths, then add the smallest extra grants you need.
+- is supported and expands to your HOME_DIR value.
+- Principle of least privilege:
+- keep write access narrow to reduce accidental damage.
+- SSH auth for git upstreams:
+- grant only the single private key file your remotes use, not all of
+- Workdir (read/write; optional)
+- Optional. Leave blank to avoid automatic workdir write access.
+- Git upstream SSH key (read-only; optional)
+- Optional. Set the exact private key file used for git upstream auth.
+- Extra read-only directories (one per line)
+- Extra read/write directories (one per line)
+- Advanced override (optional)
+- This text is appended last and can override earlier rules. Use only if you know exactly what you need.
+- Create your policy file, inspect it, and copy or download.
+- Download desktop launcher setup (.command)
+- sandbox-exec -f my-safehouse.sb -- <command>
+- macOS app shortcuts: run the downloaded launcher setup script with
+- bash /path/to/create-safehouse-desktop-launchers.command
+- Compare with CLI output via
+- Ready. Select options and click "Generate policy".
+- # Choose options, then click "Generate policy".
+
+### keyword_hits
+
+[sandbox-exec] 1 hits; sample:
+- sandbox-exec -f my-safehouse.sb -- <command>
+
+[policy builder] 1 hits; sample:
+- Policy Builder | Agent Safehouse
+
+[integrations] 1 hits; sample:
+- No optional integrations enabled.
