@@ -1,0 +1,40 @@
+[
+  {
+    "source": "GitHub Changelog WP JSON",
+    "url": "https://github.blog/changelog/2026-03-05-github-copilot-coding-agent-for-jira-is-now-in-public-preview",
+    "retrieved_at_utc": "2026-03-11T06:10:00Z",
+    "highlights": [
+      "Assign Jira issues to GitHub Copilot coding agent and get AI-generated draft pull requests",
+      "When assigned, Copilot analyzes issue description/comments, works independently, posts updates in Jira via agent panel, asks clarifying questions",
+      "Get started steps include installing Atlassian Marketplace app and a GitHub Marketplace app; connect GitHub org; configure repo access; assign issue or @mention",
+      "Requirements include Jira Cloud with Rovo enabled and Copilot coding agent enabled; connected GitHub repository"
+    ],
+    "raw_excerpt": "You can now assign Jira issues to GitHub Copilot coding agent, our asynchronous, autonomous agent, and get AI-generated draft pull requests created in your GitHub repository. When you assign a Jira issue to Copilot, it will: Analyze the Jira issue&rsquo;s description and comments to gather relevant context. Work independently to implement changes and open a draft pull request. Post updates in Jira via the agent panel. Ask clarifying questions in Jira when more information is needed. Key benefits Accelerate repetitive tasks like bug fixes and documentation updates. Reduce context switching between Jira and GitHub while keeping existing workflows. Follow your existing review and approval rules for every pull request Copilot creates. Get started Install the GitHub Copilot for Jira app from the Atlassian Marketplace. You will also install a GitHub app as part of your setup. Connect your GitHub organization during setup. Configure which repositories Copilot coding agent can access. Assign a Jira issue to GitHub Copilot (or @mention it in issue comments) to begin. Requirements Jira Cloud with Rovo enabled GitHub Copilot coding agent enabled A connected GitHub repository This integration "
+  },
+  {
+    "source": "Atlassian Marketplace listing HTML (embedded state)",
+    "url": "https://marketplace.atlassian.com/apps/1582455624/github-copilot-for-jira-by-github",
+    "retrieved_at_utc": "2026-03-11T04:12:00Z",
+    "highlights": [
+      "Trigger: assign Copilot via assignee field; or mention it in issue comments",
+      "Shows updates as pull requests are generated; agent fetches relevant context from Jira issues",
+      "Requirements: Jira Cloud with Rovo; Copilot coding agent enabled; connected GitHub repository",
+      "Pre-release terms: using integration signals agreement to GitHub pre-release terms and instruction to GitHub to send organization data to Atlassian",
+      "Data Residency variant app mentioned for GHEC with Data Residency"
+    ],
+    "more_details_excerpt": "GitHub Copilot for Jira can help teams reduce cycle times and increase throughput by automating coding tasks:&nbsp;Assign GitHub Copilot coding agent via the assignee field&nbsp;Trigger the agent by mentioning it in issue comments&nbsp;See updates as pull requests are generated&nbsp;The agent fetches relevant context from the Jira issues&nbsp;Use GitHub Copilot for Jira (GHEC with Data Residency) for GitHub Data Residency customersRequirements:&nbsp;Jira Cloud instance with Rovo&nbsp;GitHub users with Copilot coding agent enabled&nbsp;Connected GitHub repository&nbsp;&nbsp;Use of this integration signals agreement to GitHub's pre-release terms and an instruction to GitHub to send your organization's data to Atlassian.&nbsp;Get started:&nbsp;Install the apps from the Atlassian and GitHub Marketplaces&nbsp;Connect your GitHub organization&nbsp;Configure which repositories the agent can access&nbsp;Start assigning issues to GitHub CopilotWe welcome your feedback.",
+    "release_notes_excerpt": "GitHub Copilot coding agent for Jira is now available in public preview. Assign Jira issues to GitHub Copilot coding agent, which will analyze your issue details and open a draft pull request in your GitHub repository—ready for your review.Features:Copilot analyzes Jira issue descriptions and comments to gather contextWorks independently to implement changes and open a draft pull requestPosts progress updates and asks clarifying questions directly in JiraKeeps your existing review and approval rules for every pull request"
+  },
+  {
+    "source": "GitHub Docs: Integrating Copilot coding agent with Jira",
+    "url": "https://docs.github.com/copilot/how-tos/use-copilot-agents/coding-agent/integrate-coding-agent-with-jira",
+    "retrieved_at_utc": "2026-03-11T06:10:00Z",
+    "note": "Raw HTML captured in research/TASK-OPP-008C9F7D58/raw/ for citation/verification."
+  },
+  {
+    "source": "GitHub pre-release license terms",
+    "url": "https://docs.github.com/en/site-policy/github-terms/github-pre-release-license-terms",
+    "retrieved_at_utc": "2026-03-11T06:10:00Z",
+    "note": "Raw HTML captured in research/TASK-OPP-008C9F7D58/raw/ for citation/verification."
+  }
+]
