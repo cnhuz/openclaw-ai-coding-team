@@ -425,8 +425,17 @@ class Handler(BaseHTTPRequestHandler):
 
         webhook_ok, webhook_msg = post_webhook(str(calc.get("webhook_url", "")), submission)
 
-        # Compose result view link (unlocked link is generated after payment success).
+        # Compose result view links.
+        # - Base link: shows results (or locked screen)
+        # - Unlock link: can be generated after payment success and shared back to user
         result_link = f"http://{app.host}:{app.port}/r/{calc_id}?" + urlencode({"submission_id": submission_id})
+        unlock_link = ""
+        if payment_enabled and payment_mode == "required":
+            signer = UnlockTokenSigner.from_env()
+            token = signer.sign(calculator_id=calc_id, submission_id=submission_id, scope="pay")
+            unlock_link = f"http://{app.host}:{app.port}/r/{calc_id}?" + urlencode(
+                {"submission_id": submission_id, "token": token}
+            )
 
         email_status = "email not provided"
         if email:
@@ -436,6 +445,7 @@ class Handler(BaseHTTPRequestHandler):
                     f"Submitted at: {submission['timestamp']}",
                     "",
                     f"View results: {result_link}",
+                    f"Unlock (after payment): {unlock_link or '-'}",
                     "",
                     "Inputs:",
                     json.dumps(inputs, ensure_ascii=False, indent=2),
@@ -494,6 +504,7 @@ class Handler(BaseHTTPRequestHandler):
             f"<p><b>Email status:</b> {esc(email_status)}</p>",
             f"<p><b>Webhook:</b> {'<span class=ok>ok</span>' if webhook_ok else '<span class=danger>failed</span>'} {esc(webhook_msg)}</p>",
             f"<p><b>Results link:</b> <a href='{esc(result_link)}'>{esc(result_link)}</a></p>",
+            (f"<p><b>Unlock link:</b> <a href='{esc(unlock_link)}'>{esc(unlock_link)}</a></p>" if unlock_link else ""),
             "</div>",
         ]
 
