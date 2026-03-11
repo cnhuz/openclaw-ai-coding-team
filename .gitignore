@@ -9,6 +9,7 @@ Thumbs.db
 /data/
 /handoffs/
 /memory/
-/tasks/
 .openclaw-runtime/
-/specs/
+
+# Keep spec/task markdown tracked (they are part of this repo's deliverables)
+# If you need local-only drafts, add more specific patterns (e.g. /specs/_drafts/)
