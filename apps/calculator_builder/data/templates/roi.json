@@ -1,0 +1,53 @@
+{
+  "id": "tpl_roi",
+  "name": "ROI calculator",
+  "description": "Compute ROI% and net gain based on cost, savings, and revenue lift.",
+  "require_email_for_full_result": false,
+  "webhook_url": "",
+  "payment": {
+    "enabled": false
+  },
+  "fields": [
+    {
+      "key": "cost",
+      "label": "Annual cost",
+      "type": "number",
+      "min": 0,
+      "max": 10000000,
+      "step": 100,
+      "default": 10000
+    },
+    {
+      "key": "savings",
+      "label": "Annual savings",
+      "type": "number",
+      "min": 0,
+      "max": 10000000,
+      "step": 100,
+      "default": 25000
+    },
+    {
+      "key": "revenue_lift",
+      "label": "Annual revenue lift",
+      "type": "number",
+      "min": 0,
+      "max": 10000000,
+      "step": 100,
+      "default": 5000
+    },
+    {
+      "key": "net_gain",
+      "label": "Net gain",
+      "type": "result",
+      "format": "number",
+      "formula": "(savings + revenue_lift) - cost"
+    },
+    {
+      "key": "roi_percent",
+      "label": "ROI (%)",
+      "type": "result",
+      "format": "percent",
+      "formula": "IF(cost == 0, 0, ((savings + revenue_lift) - cost) / cost)"
+    }
+  ]
+}

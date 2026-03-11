@@ -1,0 +1,7 @@
+# Runtime artifacts (do not commit)
+data/calculators/
+data/submissions/
+data/outbox/
+
+# Keep templates tracked
+!data/templates/

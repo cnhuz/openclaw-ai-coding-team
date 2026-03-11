@@ -1,0 +1,50 @@
+{
+  "id": "tpl_pricing",
+  "name": "Pricing quote (simple)",
+  "description": "Quote = base_fee + seats * seat_price. Lead capture before showing full quote.",
+  "require_email_for_full_result": true,
+  "webhook_url": "",
+  "payment": {
+    "enabled": true,
+    "mode": "optional",
+    "amount_cents": 9900,
+    "currency": "usd",
+    "success_message": "Payment received. Full quote unlocked."
+  },
+  "fields": [
+    {
+      "key": "base_fee",
+      "label": "Base fee",
+      "type": "number",
+      "min": 0,
+      "max": 100000,
+      "step": 10,
+      "default": 1000
+    },
+    {
+      "key": "seats",
+      "label": "Seats",
+      "type": "slider",
+      "min": 1,
+      "max": 200,
+      "step": 1,
+      "default": 10
+    },
+    {
+      "key": "seat_price",
+      "label": "Price per seat",
+      "type": "number",
+      "min": 0,
+      "max": 10000,
+      "step": 1,
+      "default": 25
+    },
+    {
+      "key": "result_quote",
+      "label": "Total quote",
+      "type": "result",
+      "format": "currency",
+      "formula": "base_fee + seats * seat_price"
+    }
+  ]
+}
