@@ -1,0 +1,80 @@
+{
+  "comment": {
+    "mode": "update",
+    "marker": "<!-- ai-change-governance -->"
+  },
+  "rules": [
+    {
+      "id": "iam_policy",
+      "name": "IAM / policy / RBAC changes",
+      "severity": "High",
+      "paths": ["**/*iam*.*", "**/*policy*.json", "**/*rbac*.*", "**/roles/**"]
+    },
+    {
+      "id": "iac_terraform",
+      "name": "IaC (Terraform)",
+      "severity": "High",
+      "paths": ["**/*.tf", "**/*.tfvars"]
+    },
+    {
+      "id": "iac_cloudformation",
+      "name": "IaC (CloudFormation)",
+      "severity": "High",
+      "paths": ["**/*cloudformation*.*", "**/template.yaml", "**/template.yml"]
+    },
+    {
+      "id": "k8s_manifests",
+      "name": "K8s / Helm manifests",
+      "severity": "High",
+      "paths": ["k8s/**", "helm/**", "manifests/**", "**/*deployment*.yml", "**/*deployment*.yaml"]
+    },
+    {
+      "id": "prod_config",
+      "name": "Production configuration",
+      "severity": "High",
+      "paths": ["config/prod/**", "**/*production*.*"]
+    },
+    {
+      "id": "destructive_ops",
+      "name": "Potentially destructive operations",
+      "severity": "High",
+      "keywords": ["DROP\\b", "TRUNCATE\\b", "DELETE\\s+FROM\\b", "rm\\s+-rf\\b"]
+    },
+    {
+      "id": "deps_bump",
+      "name": "Dependencies / lockfiles",
+      "severity": "Medium",
+      "paths": ["**/package-lock.json", "**/pnpm-lock.yaml", "**/yarn.lock", "**/requirements*.txt", "**/poetry.lock"]
+    },
+    {
+      "id": "docs_only",
+      "name": "Docs-only change",
+      "severity": "Low",
+      "paths": ["**/*.md", "**/*.txt"]
+    }
+  ],
+  "policy": {
+    "Low": {
+      "required_approvals": 0,
+      "require_codeowner_approval": false,
+      "required_checks": []
+    },
+    "Medium": {
+      "required_approvals": 1,
+      "require_codeowner_approval": false,
+      "required_checks": []
+    },
+    "High": {
+      "required_approvals": 2,
+      "require_codeowner_approval": true,
+      "required_checks": []
+    }
+  },
+  "codeowners": {
+    "paths": ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"],
+    "team_owners": {
+      "mode": "strict",
+      "note": "strict=无法验证 team 成员时视为未满足；如需放宽，可改为 any_approval"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+name: ai-change-governance
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  risk-gate:
+    name: risk-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Evaluate PR risk + enforce policy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 automation/scripts/ai_change_governance.py \
+            --config-path .github/ai-change-governance.yml
