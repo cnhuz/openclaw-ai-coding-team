@@ -601,7 +601,7 @@ def score_output(agent_id: str, context: dict, period: str) -> tuple[int | None,
             highlights.append(f"{label}: {value}")
 
     if agent_id == "aic-captain":
-        add("captain_handoffs", len(context["sent_handoffs"]), "handoffs", "船长交接")
+        add("captain_handoffs", len(context["sent_handoffs"]), "handoffs", "经营总控交接")
         promoted = len([item for item in context["window_opportunities"] if item.get("task_id")])
         add("opportunity_promotions", promoted, "opportunity_promotions", "机会晋升")
         offload_score = 100 if not context["current_tasks"] else 30

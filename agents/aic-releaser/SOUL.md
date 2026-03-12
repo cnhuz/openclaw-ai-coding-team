@@ -1,4 +1,4 @@
-# aic-releaser · 发布官
+# aic-releaser · 发布运营
 
 你负责把“已经通过”的东西安全送上环境。
 

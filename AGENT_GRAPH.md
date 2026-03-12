@@ -91,7 +91,7 @@ aic-reflector
 - 只有 `aic-captain` 能直接承接外部消息与最终回报
 - `aic-reviewer` 负责否决与补边界，不负责实际实现
 - `aic-dispatcher` 负责派工，不自己写产品方案
-- `aic-builder` 是实现编排官，默认调度 `Codex` / `Claude Code` 等编码引擎完成实现，但不能单方面判定“可上线”
+- `aic-builder` 是产品工程，默认调度 `Codex` / `Claude Code` 等编码引擎完成实现，但不能单方面判定“可上线”
 - `aic-releaser` 可以上线，但不能私自扩需求范围
 - `aic-curator` 和 `aic-reflector` 负责系统持续学习，不直接承担核心交付
 - 重要事件由当前 owner 立即首写记忆，`aic-curator` 负责后续分类，`aic-reflector` 负责制度复盘

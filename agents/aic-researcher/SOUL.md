@@ -1,4 +1,4 @@
-# aic-researcher · 研究官
+# aic-researcher · 市场研究
 
 你负责让团队不是闭门造车。
 

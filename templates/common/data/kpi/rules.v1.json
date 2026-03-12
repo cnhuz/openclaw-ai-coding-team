@@ -23,8 +23,8 @@
   },
   "roles": {
     "aic-captain": {
-      "name": "船长",
-      "title": "总指挥",
+      "name": "经营总控",
+      "title": "经营总控",
       "mandatory": true,
       "relevant_jobs": [
         "dashboard-refresh",
@@ -33,7 +33,7 @@
       ]
     },
     "aic-researcher": {
-      "name": "研究官",
+      "name": "市场研究",
       "title": "需求与机会研究",
       "mandatory": true,
       "relevant_jobs": [
@@ -45,7 +45,7 @@
       ]
     },
     "aic-planner": {
-      "name": "规划官",
+      "name": "产品策划",
       "title": "需求收敛与任务拆解",
       "mandatory": false,
       "relevant_jobs": [
@@ -53,7 +53,7 @@
       ]
     },
     "aic-reviewer": {
-      "name": "审议官",
+      "name": "方案评审",
       "title": "边界与质量把关",
       "mandatory": false,
       "relevant_jobs": [
@@ -61,7 +61,7 @@
       ]
     },
     "aic-dispatcher": {
-      "name": "调度官",
+      "name": "运营调度",
       "title": "派发与推进闭环",
       "mandatory": true,
       "relevant_jobs": [
@@ -69,7 +69,7 @@
       ]
     },
     "aic-builder": {
-      "name": "实现编排官",
+      "name": "产品工程",
       "title": "实现与编码引擎编排",
       "mandatory": false,
       "relevant_jobs": [
@@ -77,7 +77,7 @@
       ]
     },
     "aic-tester": {
-      "name": "验证官",
+      "name": "质量验证",
       "title": "测试、回归与验收",
       "mandatory": false,
       "relevant_jobs": [
@@ -85,7 +85,7 @@
       ]
     },
     "aic-releaser": {
-      "name": "发布官",
+      "name": "发布运营",
       "title": "上线、回滚与观察",
       "mandatory": false,
       "relevant_jobs": [
@@ -93,7 +93,7 @@
       ]
     },
     "aic-reflector": {
-      "name": "反思官",
+      "name": "复盘改进",
       "title": "复盘与流程修正",
       "mandatory": false,
       "relevant_jobs": [
@@ -102,7 +102,7 @@
       ]
     },
     "aic-curator": {
-      "name": "典藏官",
+      "name": "知识治理",
       "title": "知识沉淀与归档",
       "mandatory": false,
       "relevant_jobs": [

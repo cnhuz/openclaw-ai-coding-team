@@ -55,16 +55,16 @@ OWNER_OPTIONS = [
 ]
 
 AGENT_META = {
-    "aic-captain": {"name": "船长", "title": "总指挥", "lane": "指挥层"},
-    "aic-planner": {"name": "规划官", "title": "需求收敛与任务拆解", "lane": "规划层"},
-    "aic-reviewer": {"name": "审议官", "title": "边界与质量把关", "lane": "规划层"},
-    "aic-dispatcher": {"name": "调度官", "title": "派发与推进闭环", "lane": "调度层"},
-    "aic-researcher": {"name": "研究官", "title": "需求与机会研究", "lane": "研究执行层"},
-    "aic-builder": {"name": "实现编排官", "title": "实现与编码引擎编排", "lane": "研究执行层"},
-    "aic-tester": {"name": "验证官", "title": "测试、回归与验收", "lane": "研究执行层"},
-    "aic-releaser": {"name": "发布官", "title": "上线、回滚与观察", "lane": "研究执行层"},
-    "aic-reflector": {"name": "反思官", "title": "复盘与流程修正", "lane": "复盘层"},
-    "aic-curator": {"name": "典藏官", "title": "知识沉淀与归档", "lane": "复盘层"},
+    "aic-captain": {"name": "经营总控", "title": "统一入口与经营控制", "lane": "指挥层"},
+    "aic-planner": {"name": "产品策划", "title": "需求收敛与方案设计", "lane": "规划层"},
+    "aic-reviewer": {"name": "方案评审", "title": "方案边界与质量评审", "lane": "规划层"},
+    "aic-dispatcher": {"name": "运营调度", "title": "派发执行与推进闭环", "lane": "调度层"},
+    "aic-researcher": {"name": "市场研究", "title": "用户、市场与机会研究", "lane": "研究执行层"},
+    "aic-builder": {"name": "产品工程", "title": "产品实现与工程交付", "lane": "研究执行层"},
+    "aic-tester": {"name": "质量验证", "title": "测试、回归与质量验收", "lane": "研究执行层"},
+    "aic-releaser": {"name": "发布运营", "title": "上线发布与运行观察", "lane": "研究执行层"},
+    "aic-reflector": {"name": "复盘改进", "title": "复盘分析与流程改进", "lane": "复盘层"},
+    "aic-curator": {"name": "知识治理", "title": "知识沉淀与治理归档", "lane": "复盘层"},
 }
 PROTECTED_AGENT_IDS = {"main", "aic-captain"}
 
