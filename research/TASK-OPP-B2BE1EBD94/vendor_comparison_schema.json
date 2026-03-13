@@ -1,0 +1,122 @@
+{
+  "vendor_name": "",
+  "pricing_anchor": {
+    "value": "",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "official_security_url": {
+    "value": "",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "official_privacy_url": {
+    "value": "",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "encryption_in_transit": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "encryption_at_rest": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "access_control_rbac": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "sso_saml": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "audit_logs": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "data_retention_deletion": {
+    "value": "",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "dpa_available": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "subprocessor_list": {
+    "value": "Yes|No|Unknown",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "compliance_claims": {
+    "value": "",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "maintenance_security_testing": {
+    "value": "",
+    "status": "Verified|Claim|Unknown",
+    "evidence": {
+      "url": "",
+      "quote": "",
+      "source_path": ""
+    }
+  },
+  "last_checked_at": "YYYY-MM-DD",
+  "notes": ""
+}

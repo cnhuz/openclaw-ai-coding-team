@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<!--[if lte IE 9 ]> <html prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-gb" lang="en-gb" dir="ltr" class="old-IE"> <![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!--> <html prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-gb" lang="en-gb" dir="ltr"> <!--<![endif]-->
+<head>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<base href="https://www.calculoid.com/terms-of-service" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<meta name="keywords" content="web, calculator, designer, create, embed" />
+	<meta name="author" content="Pavel Šíma" />
+	<meta name="description" content="Web Calculator Designer - 
+Create &amp; Embed. Finance, pricing, ROI, health, and other calculators.  4.000+ public calculators to copy. Easy to embed on websites &amp; applications. With online payments" />
+	<title>Terms of service - Calculoid.com</title>
+	<link href="/templates/esw_easypeasy/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+	<link href="https://www.calculoid.com/plugins/editors/yeeditor/assets/css/css_animation.css?ver=1.0" rel="stylesheet" type="text/css" />
+	<link href="https://www.calculoid.com/plugins/editors/yeeditor/assets/css/docs-row.css?ver=1.0" rel="stylesheet" type="text/css" />
+	<link href="https://www.calculoid.com/plugins/editors/yeeditor/assets/css/docs-frontend.css?ver=1.0" rel="stylesheet" type="text/css" />
+	<link href="https://www.calculoid.com/plugins/editors/yeeditor/assets/css/widgets.css?ver=1.0" rel="stylesheet" type="text/css" />
+	<link href="https://www.calculoid.com/plugins/content/fastsocialshare/style/style.css" rel="stylesheet" type="text/css" />
+	<link href="/media/sourcecoast/css/common.css" rel="stylesheet" type="text/css" />
+	<link href="/templates/esw_easypeasy/css/fancybox/jquery.fancybox.css" rel="stylesheet" type="text/css" />
+	<link href="/templates/esw_easypeasy/css/template.less.css?v=1579265236" rel="stylesheet" type="text/css" />
+	<style type="text/css">
+
+        a.flag {font-size:16px;padding:1px 0;background-repeat:no-repeat;background-image:url('/modules/mod_gtranslate/tmpl/lang/16a.png');}
+        a.flag:hover {background-image:url('/modules/mod_gtranslate/tmpl/lang/16.png');}
+        a.flag img {border:0;}
+        a.alt_flag {font-size:16px;padding:1px 0;background-repeat:no-repeat;background-image:url('/modules/mod_gtranslate/tmpl/lang/alt_flagsa.png');}
+        a.alt_flag:hover {background-image:url('/modules/mod_gtranslate/tmpl/lang/alt_flags.png');}
+        a.alt_flag img {border:0;}
+    
+        span.gflag {font-size:16px;padding:1px 0;background-repeat:no-repeat;background-image:url(/modules/mod_gtranslate/tmpl/lang/16.png);}
+        span.gflag img {border:0;margin-top:2px;}
+        .switcher {font-family:Arial;font-size:10pt;text-align:left;cursor:pointer;overflow:hidden;width:163px;line-height:16px;}
+        .switcher a {text-decoration:none;display:block;font-size:10pt;-webkit-box-sizing:content-box;-moz-box-sizing:content-box;box-sizing:content-box;}
+        .switcher a span.gflag {margin-right:3px;padding:0;display:block;float:left;}
+        .switcher .selected {background:#FFFFFF url(/modules/mod_gtranslate/tmpl/lang/switcher.png) repeat-x;position:relative;z-index:9999;}
+        .switcher .selected a {border:1px solid #CCCCCC;background:url(/modules/mod_gtranslate/tmpl/lang/arrow_down.png) 146px center no-repeat;color:#666666;padding:3px 5px;width:151px;}
+        .switcher .selected a:hover {background:#F0F0F0 url(/modules/mod_gtranslate/tmpl/lang/arrow_down.png) 146px center no-repeat;}
+        .switcher .option {position:relative;z-index:9998;border-left:1px solid #CCCCCC;border-right:1px solid #CCCCCC;border-bottom:1px solid #CCCCCC;background-color:#EEEEEE;display:none;width:161px;-webkit-box-sizing:content-box;-moz-box-sizing:content-box;box-sizing:content-box;}
+        .switcher .option a {color:#000;padding:3px 5px;}
+        .switcher .option a:hover {background:#FFC;}
+        .switcher .option a.selected {background:#FFC;}
+        #selected_lang_name {float: none;}
+        .l_name {float: none !important;margin: 0;}
+    
+	</style>
+	<script src="/media/jui/js/jquery.min.js" type="text/javascript"></script>
+	<script src="/media/jui/js/jquery-noconflict.js" type="text/javascript"></script>
+	<script src="/media/jui/js/jquery-migrate.min.js" type="text/javascript"></script>
+	<script src="/media/system/js/mootools-core.js" type="text/javascript"></script>
+	<script src="/media/system/js/core.js" type="text/javascript"></script>
+	<script src="https://www.calculoid.com/plugins/editors/yeeditor/assets/js/base64.js?ver=1.0" type="text/javascript"></script>
+	<script src="/components/com_jfbconnect/includes/jfbconnect.js?v=6" type="text/javascript"></script>
+	<script src="/media/jui/js/bootstrap.min.js" type="text/javascript"></script>
+	<script type="text/javascript">
+
+jQuery.noConflict();
+jQuery(document).ready(function($) {
+	checkStickyRightCalculoidLoadedStickyRight();
+});
+
+function checkStickyRightCalculoidLoadedStickyRight() {
+	var isThereCalculoid = jQuery('div[ng-controller=CalculoidMainCtrl]').length;
+	var isThereAngular = typeof angular;
+	var isCalculoidLoaded = isThereAngular === 'undefined' ? 'undefined' : typeof angular.element(document.querySelector('.ng-scope')).scope();
+
+    if( isThereCalculoid && isThereAngular !== 'undefined' && isCalculoidLoaded === 'undefined') {
+       window.setTimeout(checkStickyRightCalculoidLoadedStickyRight, 1000); /* this checks the every 1000 milliseconds*/
+    } else {
+      loadStickyRight();
+    }
+}
+
+function loadStickyRight() {
+	if (jQuery('#maincol').height() > jQuery('#rightcol').height()) {
+		var stickyright = jQuery('#stickyright');
+		var rightcoloffsettop = stickyright.offset().top;
+		var rightcoloffsetbottom = jQuery('body').height() - jQuery('#content').offset().top - jQuery('#content').height() + 1;
+		stickyright.attr('data-offset-top', rightcoloffsettop);
+
+		var offsetrightFn = function () {
+			h = stickyright.attr('data-offset-top');
+			return h;
+		}
+		var offsetrightbottomFn = function () {
+			o = jQuery('body').height() - jQuery('#content').offset().top - jQuery('#content').height() + 1;
+			return o;
+		}
+		
+		stickyright.affix({
+			offset: {
+				top: offsetrightFn
+				, bottom: offsetrightbottomFn
+			}
+		})
+	}
+}
+	
+        jQuery(document).ready(function() {
+          jQuery('.switcher .selected').click(function() {if(!(jQuery('.switcher .option').is(':visible'))) {jQuery('.switcher .option').stop(true,true).delay(50).slideDown(200);}});
+          jQuery('body').not('.switcher .selected').mousedown(function() {if(jQuery('.switcher .option').is(':visible')) {jQuery('.switcher .option').stop(true,true).delay(100).slideUp(200);}});
+        });
+    
+	</script>
+	<script type="text/javascript">jfbc.login.logout_facebook = false;
+jfbc.base = 'https://www.calculoid.com/';
+jfbc.return_url = 'L3Rlcm1zLW9mLXNlcnZpY2U=';
+jfbc.login.scope = 'email';
+jfbc.login.show_modal = '0';
+jfbc.login.use_popup = true;
+jfbc.login.auto = '0';
+jfbc.login.logged_in = false;
+jfbc.token = '1f9eafad5064da0e6a5a4f8df574a8ea';
+jfbc.init();
+</script>
+	<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:site" content="@Calculoid"/><meta name="twitter:creator" content="@EasySoftware Ltd."/><meta property="og:type" content="company"/><meta property="og:site_name" content="Calculoid.com"/><meta property="og:url" content="https://www.calculoid.com/terms-of-service"/><meta name="twitter:title" content="Terms of service - Calculoid.com"/><meta property="og:title" content="Terms of service - Calculoid.com"/><meta name="twitter:description" content="Web Calculator Designer - 
+Create & Embed. Finance, pricing, ROI, health, and other calculators.  4.000+ public calculators to copy. Easy to embed on websites & applications. With online payments"/><meta property="og:description" content="Web Calculator Designer - 
+Create & Embed. Finance, pricing, ROI, health, and other calculators.  4.000+ public calculators to copy. Easy to embed on websites & applications. With online payments"/><meta property="og:locale" content="en_gb"/>
+	
+	
+
+  <link href='//fonts.googleapis.com/css?family=Ubuntu:400,300,500,700' rel='stylesheet' type='text/css' />
+
+</head>
+<body class="x-c-s menu-terms-of-service option-com-content view-article lang-en-GB f2c-projectid-2 f2c-clanek access-level-1 access-level-1 access-level-5 domain-scalculoidcom" ng-app="calculoid"><!-- Begin: gtm -->
+<script type="text/javascript">
+dataLayer = [];
+</script>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PNGXZH" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<script type="text/javascript">
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({
+	'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+	j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+	j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PNGXZH');
+</script>
+<!-- End: gtm --><div id="fb-root"></div>
+<script type="text/javascript">
+  
+  window.fbAsyncInit = function() {
+    FB.init({version: 'v2.3',status: false, cookie: true, xfbml: false});
+FB.Event.subscribe('comment.create', jfbc.social.facebook.comment.create);
+FB.Event.subscribe('comment.remove', jfbc.social.facebook.comment.remove);
+FB.Event.subscribe('edge.create', jfbc.social.facebook.like.create);
+FB.Event.subscribe('edge.remove', jfbc.social.facebook.like.remove);
+  };
+  (function(d, s, id){
+     var js, fjs = d.getElementsByTagName(s)[0];
+     if (d.getElementById(id)) {return;}
+     js = d.createElement(s); js.id = id;
+     js.src = "//connect.facebook.net/en_GB/sdk.js";
+     fjs.parentNode.insertBefore(js, fjs);
+   }(document, 'script', 'facebook-jssdk'));
+</script>
+
+<div id="main">
+	<div id="back">
+
+				<header>
+			<div id="header">
+				<div class="container">
+					<ul class="skiplinks">
+												<li><a href="#content" class="u2">Jump to content</a></li>
+												<li><a href="#nav" class="u2">Jump to navigation</a></li>
+																														<li><a href="#rightcol" class="u2">Jump to additional information</a></li>
+												<li><a href="#footer" class="u2">Jump to footer</a></li>
+					</ul>
+					<div class="row">
+						<div id="logoheader" class="span2">
+							<div id="logo">
+																	
+
+<div class="custom"  >
+	<p><a href="/" class="easy-logo-type"><img src="/images/Logo_Calculoid.svg?v=2" alt="Web calculator designer - Calculoid.com" class="easy-logo-type-mark" style="height: 34px;" /></a></p></div>
+
+															</div>
+						</div>
+						<div id="top" class="span10">
+							<div class="row">
+																	<div id="module371" class="module span2  pull-right nav-translate expanding-search top-login mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+			<div class="moduletable text-center pull-left mod-gtranslate">
+						
+<script type="text/javascript">
+/* <![CDATA[ */
+        function doGTranslate(lang_pair) {if(lang_pair.value)lang_pair=lang_pair.value;if(lang_pair=='')return;var lang=lang_pair.split('|')[1];if(typeof _gaq=='undefined')alert('Google Analytics is not installed, please turn off Analytics feature in GTranslate');else _gaq.push(['_trackEvent', 'GTranslate', lang, location.hostname+location.pathname+location.search]);var plang=location.hostname.split('.')[0];if(plang.length !=2 && plang.toLowerCase() != 'zh-cn' && plang.toLowerCase() != 'zh-tw')plang='en';location.href=location.protocol+'//'+(lang == 'en' ? '' : lang+'.')+location.hostname.replace('www.', '').replace(RegExp("^" + plang + '\\.'), '')+'/terms-of-service';}
+    /* ]]> */
+</script>
+
+
+
+
+<div class="switcher notranslate"><div class="selected"><a href="#" onclick="return false;"><span class="gflag" style="background-position:-0px -0px"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="English" /></span></a></div><div class="option"><a href="https://www.calculoid.com/terms-of-service" onclick="doGTranslate('en|en');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="English" class="nturl  selected"><span class="gflag" style="background-position:-0px -0px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="English" /></span>English</a><a href="https://zh-CN.calculoid.com/terms-of-service" onclick="doGTranslate('en|zh-CN');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Chinese (Simplified)" class="nturl "><span class="gflag" style="background-position:-300px -0px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Chinese (Simplified)" /></span>Chinese (Simplified)</a><a href="https://cs.calculoid.com/terms-of-service" onclick="doGTranslate('en|cs');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Czech" class="nturl "><span class="gflag" style="background-position:-600px -0px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Czech" /></span>Czech</a><a href="https://fr.calculoid.com/terms-of-service" onclick="doGTranslate('en|fr');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="French" class="nturl "><span class="gflag" style="background-position:-200px -100px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="French" /></span>French</a><a href="https://de.calculoid.com/terms-of-service" onclick="doGTranslate('en|de');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="German" class="nturl "><span class="gflag" style="background-position:-300px -100px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="German" /></span>German</a><a href="https://it.calculoid.com/terms-of-service" onclick="doGTranslate('en|it');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Italian" class="nturl "><span class="gflag" style="background-position:-600px -100px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Italian" /></span>Italian</a><a href="https://ja.calculoid.com/terms-of-service" onclick="doGTranslate('en|ja');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Japanese" class="nturl "><span class="gflag" style="background-position:-700px -100px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Japanese" /></span>Japanese</a><a href="https://pt.calculoid.com/terms-of-service" onclick="doGTranslate('en|pt');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Portuguese" class="nturl "><span class="gflag" style="background-position:-300px -200px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Portuguese" /></span>Portuguese</a><a href="https://ru.calculoid.com/terms-of-service" onclick="doGTranslate('en|ru');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Russian" class="nturl "><span class="gflag" style="background-position:-500px -200px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Russian" /></span>Russian</a><a href="https://es.calculoid.com/terms-of-service" onclick="doGTranslate('en|es');jQuery(this).parent().parent().find('div.selected a').html(jQuery(this).html());return false;" title="Spanish" class="nturl "><span class="gflag" style="background-position:-600px -200px;"><img src="/modules/mod_gtranslate/tmpl/lang/blank.png" height="16" width="16" alt="Spanish" /></span>Spanish</a></div></div>		</div>
+	<p style="text-align: right;"><a href="http://app.calculoid.com/#/signin" class=""><span>Sign in</span></a><a href="http://app.calculoid.com/#/signup" class="btn btn-info "><span>Sign up Free</span></a></p>
+</div>
+<style type="text/css">
+.nav-translate .mod-gtranslate .switcher {margin-top:33px;}
+@media screen and (min-width: 960px) {
+#top .top-login { line-height: 100px; }
+}
+</style>		</div>
+	</div>
+		<div id="module1" class="module span8   mod-menu">
+				<div class="module-body">
+			<ul class="nav menu ">
+<li class="item-154 parent">		<a href="/functions" > <span>Functions</span></a></li><li class="item-156 parent">		<a href="/solutions" > <span>Solutions</span></a></li><li class="item-212 parent">		<a href="/web-calculator-templates-by-calculoid" > <span>Templates</span></a></li><li class="item-179">		<a href="/faq" > <span>FAQ</span></a></li><li class="item-152">		<a href="/pricing" > <span>Pricing</span></a></li><li class="item-155">		<a href="/contacts" > <span>Contacts</span></a></li></ul>
+		</div>
+	</div>
+	
+															</div>
+						</div>
+											</div>
+				</div>
+			</div>
+		</header>
+		
+		
+				<nav>
+			<div id="nav">
+				<div class="navbar navbar-static-top">
+					<div class="navbar-inner">
+						<div class="container">
+														<div class="unseen"><strong>Main navigation</strong></div>
+							
+															<div class="nav-logo brand visible-phone">
+										<div id="module100" class="module span0  visible-phone mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+	<a class="easy-logo-type" href="/"><img class="easy-logo-type-mark" style="margin-top: -7px; height: 34px;" src="/images/Logo_Calculoid.svg?v=2" alt="Web calculator designer - Calculoid.com" height="30" class="easy-logo-type-mark" /></a></div>
+		</div>
+	</div>
+	
+								</div>
+							
+							
+							
+							
+							
+														<a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+							</a>
+							
+							
+							
+							<div class="nav-collapse collapse">
+								<ul class="nav menu visible-phone">
+<li class="item-154 parent">		<a href="/functions" > <span>Functions</span></a></li><li class="item-156 parent">		<a href="/solutions" > <span>Solutions</span></a></li><li class="item-212 parent">		<a href="/web-calculator-templates-by-calculoid" > <span>Templates</span></a></li><li class="item-179">		<a href="/faq" > <span>FAQ</span></a></li><li class="item-152">		<a href="/pricing" > <span>Pricing</span></a></li><li class="item-155">		<a href="/contacts" > <span>Contacts</span></a></li></ul>
+<ul class="nav menu visible-phone">
+<li class="item-282">		<a href="/search-mobile" > <span>Search</span></a></li></ul>
+
+															</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</nav>
+		
+		
+		
+		
+		
+																																						
+						<section>
+			<div id="content">
+				<div class="container">
+										<div class="row">
+						<div id="maincol" class="span8">
+							
+																																																																																																																																																			
+							<div class="unseen"><strong>Content</strong></div><div class="component-pad"><article>
+<div class="item-page">
+				<div class="page-header">
+		<h1>
+															Terms of service									</h1>
+	</div>
+					
+	
+	
+		
+								<div class="f2c-article-intro">	
+	<div class="row-fluid">
+		<div class="span12">	
+					</div>
+			</div>
+	
+</div>
+
+ <div class="f2c-article-main">
+			<div class="f2c-article-main-maintext">
+		<h3>1. OPERATOR</h3>
+<p>This online store service is operated by:</p>
+<p><strong>Easy Software Ltd.</strong><br />Kemp House, 152-160, City Road<br />EC1V 2NX London<br />United Kingdom<br />Company ID:&nbsp;08960980</p>
+<h3>2. LIABILITY</h3>
+<p>Easy Software cannot be held liable for any errors, disruptions of service or loses of data caused by the software provided unless a special agreement has been signed between Easy Software and the customer.</p>
+<p>A customer is using the software AS IS. Incompatibility with other software, specific software, hardware configuration or partial misfunctionality does NOT entitle the client to cancel the order or get a refund.</p>
+<h3>3. ORDER CANCELLATION &amp; REFUNDS</h3>
+<p>The order can be canceled without additional charges before the payment has been cleared to our account. For downloadable products, we do not issue ANY refunds after the download channel has been enabled and any download attempt has been made.</p>
+<p>Cancellation of the order after the payment has been received is possible on agreement, if the ordered service was not used or no download attempt has been made.</p>
+<p>Refunds will not be provided&nbsp;for any subscriptions. We do not provide credit, refunds, or prorate billing for subscriptions that are canceled in the middle of the subscription period. Subscription provider reserves the right to offer refunds, discount or other considerations in select circumstances at its sole discretion.Each circumstance is unique and election to make such an offer in one instance does not create the obligation to do so in another.&nbsp;&nbsp;</p>
+<h3>4. PRICES&nbsp;</h3>
+<p>The prices shown at the time of the order are final.</p>
+<h3>5. SUPPORT</h3>
+<p>Unless you have purchased a support service or unless explicitly stated, there is no guaranteed support service included in the price of the product license. You are buying the product AS IS. Support service is provided separately.</p>
+<h3>6. COMMUNICATION CHANNELS</h3>
+<p>You can contact Easy Software via email, phone or mail. The email address is&nbsp;<span id="cloake032836013da8bb18793009d89ee17a8">This email address is being protected from spambots. You need JavaScript enabled to view it.</span><script type='text/javascript'>
+				document.getElementById('cloake032836013da8bb18793009d89ee17a8').innerHTML = '';
+				var prefix = '&#109;a' + 'i&#108;' + '&#116;o';
+				var path = 'hr' + 'ef' + '=';
+				var addye032836013da8bb18793009d89ee17a8 = 's&#117;pp&#111;rt' + '&#64;';
+				addye032836013da8bb18793009d89ee17a8 = addye032836013da8bb18793009d89ee17a8 + 'c&#97;lc&#117;l&#111;&#105;d' + '&#46;' + 'c&#111;m';
+				var addy_texte032836013da8bb18793009d89ee17a8 = 's&#117;pp&#111;rt' + '&#64;' + 'c&#97;lc&#117;l&#111;&#105;d' + '&#46;' + 'c&#111;m';document.getElementById('cloake032836013da8bb18793009d89ee17a8').innerHTML += '<a ' + path + '\'' + prefix + ':' + addye032836013da8bb18793009d89ee17a8 + '\'>'+addy_texte032836013da8bb18793009d89ee17a8+'<\/a>';
+		</script>,&nbsp;</p>
+<h3>7. PROTECTION OF PERSONAL <span style="color: null;"> </span>DATA</h3>
+<p>The Client declares that he is aware of his legal obligations as an administrator of personal data of the Users and clients. Method and processing of personal data of these entities within the Service is determined by the Client. The Provider does not bear any responsibility for proper fulfilment of legal obligations of the Client as a personal data administrator.</p>
+<p><span style="color: null;">All data are collected by the Provider from the Client for the purpose of providing Service, improving its quality and sending commercial and marketing notifications only. If the Client is a natural person, the following data are collected: name, surname, billing address, e-mail, phone number, information on </span><span style="color: null;">use</span><span style="color: null;"> of the Service.</span></p>
+<p><span style="color: null;">All communication within the Service is encrypted by SSL protocol. The Client hereby declares that he considers this method of encrypting sufficiently safe.</span></p>
+<p><span style="color: null;">The Provider undertakes that he will not provide any information specified by the Client during the registration of his User Account to any third </span><span style="color: null;">party,</span><span style="color: null;"> unless the Client specifically agrees to it.</span></p>
+<p><span style="color: null;">Clients data are stored in electronic systems of the Provider for the duration of the contractual relationship. After its termination the Provider stores data necessary for regulatory compliance only. The Client agrees that the Provider will use the name and the logo of the Client in the Provider’s clients list for and after the duration of the </span><span style="color: null;">Agreement,</span><span style="color: null;"> unless otherwise agreed with the Client based on his brand guidelines or policy.</span></p>
+<h3><span style="color: null;">8.&nbsp;FINAL PROVISIONS</span></h3>
+<p><span style="color: null;">These conditions are valid from 25.5.2018</span></p>
+<p><span style="color: null;">The operator keeps right to change these conditions without prior notice.</span></p>
+<h1>Principles of personal data processing</h1>
+<p>Dear client,</p>
+<p>Let us inform you how Easy Software (hereinafter also referred to as “we” or “our Company”) processes your personal data in connection with offering, concluding, providing and maintaining Company products and services.</p>
+<p>The purpose of this Principles is to give you information about the particular personal data we collect, how we treat them, what sources we get them from, what purpose we use them for, whom we may provide the data to, where you can obtain information about your personal data we process, or what are your individual rights concerning the protection of personal data.</p>
+<p>Thus, please read the contents of these Principles. We will be pleased to answer any of your questions in any of our branch offices at Easy Software ltd, Kemp House, 152-160 City Road, EC1V 2NX London, United Kingdom or via e-mail: <span id="cloakce1e832eb0dc03bd4e0744e3130e8a80">This email address is being protected from spambots. You need JavaScript enabled to view it.</span><script type='text/javascript'>
+				document.getElementById('cloakce1e832eb0dc03bd4e0744e3130e8a80').innerHTML = '';
+				var prefix = '&#109;a' + 'i&#108;' + '&#116;o';
+				var path = 'hr' + 'ef' + '=';
+				var addyce1e832eb0dc03bd4e0744e3130e8a80 = '&#105;nf&#111;' + '&#64;';
+				addyce1e832eb0dc03bd4e0744e3130e8a80 = addyce1e832eb0dc03bd4e0744e3130e8a80 + '&#101;&#97;sys&#111;ftw&#97;r&#101;' + '&#46;' + 'c&#111;m';
+				var addy_textce1e832eb0dc03bd4e0744e3130e8a80 = '&#105;nf&#111;' + '&#64;' + '&#101;&#97;sys&#111;ftw&#97;r&#101;' + '&#46;' + 'c&#111;m';document.getElementById('cloakce1e832eb0dc03bd4e0744e3130e8a80').innerHTML += '<a ' + path + '\'' + prefix + ':' + addyce1e832eb0dc03bd4e0744e3130e8a80 + '\'>'+addy_textce1e832eb0dc03bd4e0744e3130e8a80+'<\/a>';
+		</script>.</p>
+<h2 style="text-align: left;"><strong>1. General Information </strong></h2>
+<p style="text-align: left;">Our Company is subject to various statutory obligations regarding the processing of client personal data that we must comply with, particularly with regard to fulfilment of our contractual obligations or exercise of official authority. In this regard, we would be unable to provide our products and services at all without being given your personal data. Also, we process personal data of clients beyond the framework of our statutory obligations for the purpose of customer care, and to address you with targeted offers of products and services. We need your consent to do this. If you decide to not grant your consent in these cases, our provided products or services may be limited or otherwise adjusted, depending on the scope of data we are entitled to process. Every client is informed about the scope of limitations or adjustments.</p>
+<p style="text-align: left;">Unless explicitly stated otherwise, all of the information contained herein also applies to the processing of personal data of prospective customers, i.e. persons with whom we are in contact but have not established a contractual relationship yet, as well as former clients. The information contained herein also applies, to a reasonable extent, to the processing of personal data of other persons, with regard to whom the Company has certain obligations, or with whom our Company is in direct contact without being in a contractual relationship with them (such as representatives of legal entities).</p>
+<h3 style="text-align: left;"><strong>1.1. Personal Data Processing Principles </strong></h3>
+<p style="text-align: left;">As part of processing your personal data we respect top standards of personal data protection and particularly abide by the following principles:</p>
+<p style="text-align: left;">(a) We always process your personal data for a clearly and comprehensibly defined purpose, using defined means, in a defined manner, and only for a time necessary with regard to the purpose; we only process precise personal data of clients and ensure that their processing corresponds with and is necessary for the defined purpose;</p>
+<p style="text-align: left;">(b) We protect and process your personal data in a manner ensuring highest possible security of the data and preventing any unauthorized or accidental access to client personal data, their modification, destruction or loss, unauthorized transfers, other unauthorized processing or other abuse;</p>
+<p style="text-align: left;">(c) We always clearly inform you about processing your personal data and your rights to receive precise and full information about the circumstances of such processing as well as your other related rights;</p>
+<p style="text-align: left;">(d) At our Company we adhere to adequate technical and organizational measures to ensure a level of security matching all possible risks; all persons who come into contact with client personal data are obliged to keep confidential the information acquired in connection with the processing of such data.</p>
+<h2 style="text-align: left;"><strong>2. Information about the Processing of Personal Data </strong></h2>
+<h3 style="text-align: left;"><strong>2.1. Information about the Administrator </strong></h3>
+<p style="text-align: left;">The administrator of your personal data is our Company, i.e. Easy Software ltd , Kemp House, 152-160 City Road, EC1V 2NX London, United Kingdom, ID: 08960980</p>
+<h3 style="text-align: left;"><strong>2.2. Purpose and Legal Basis of Processing </strong></h3>
+<h4 style="text-align: left;"><strong>2.2.1. Processing of Personal Data without Your Consent </strong></h4>
+<p style="text-align: left;">This usually concerns situations where you are obliged to disclose certain personal data to us as a condition to let us provide you with our product or service, or where we are entitled to process your personal data acquired otherwise.</p>
+<p style="text-align: left;">(a) By virtue of law, we are entitled to process your personal data without your consent for the following purposes of compliance with our statutory obligations, in particular:</p>
+<p style="text-align: left;">(i) compliance with statutory disclosures to public authorities;</p>
+<p style="text-align: left;">(ii) compliance with archiving obligations.</p>
+<p style="text-align: left;">(b) Conclusion or performance of a contract with you.</p>
+<p style="text-align: left;">(c) Protection of rights and interests protected by law, particularly in respect of resolution of any and all disputes, particularly for the purpose of court or other disputes.</p>
+<h4 style="text-align: left;"><strong>2.2.2. Processing of Personal Data with Your Consent </strong></h4>
+<p style="text-align: left;">This particularly concerns situations where you voluntarily agree that we process the provided or otherwise acquired personal data. Not granting your consent may be a reason preventing our Company from providing certain products or services or forcing it to reasonably adjust the availability, scope or conditions of provided products and services.</p>
+<p style="text-align: left;">Based on your consent, our Company processes your personal data for the following purposes:</p>
+<p style="text-align: left;">(a) customer care; these are activities that do not stand for performance of a contract or another legal framework of personal data processing, and include the following: (i) market research;(ii) monitoring of client actions on our Company’s website in connection with the offered services (thus, this purpose does not relate to mere acquisition of information about actions of visitors to our Company’s website in the form of cookies as described below in the Article on Electronic Means of Communication and Mobile Applications);</p>
+<p style="text-align: left;">(b) offering of products and services; in particular, this includes distribution of information, offering of products and services of our Company and other parties, including product and service offers targeted at particular clients, all via various channels, such as by mail, electronic means (including electronic mail and messages sent to mobile devices via a telephone number), or by telephone, via a website. To a certain extent, in these cases, our Company is also entitled to offer products and services to clients without obtaining their consent; if implied by the law, you will be informed in this regard about your right to express your disagreement with any further offering of products or services. In this regard, your personal data may also be forwarded to third parties for the purpose of distribution of information and offering of products and services of such third parties. More details are provided below in these Principles.</p>
+<h3 style="text-align: left;"><strong>2.3. Scope of Processed Client Personal Data </strong></h3>
+<p style="text-align: left;">Our Company processes your personal data to an extent as necessary to meet the above purposes. We particularly process contact and identification data. Detailed information about the scope of processed personal data of clients is stated in Annex 1 to these Principles.</p>
+<h3 style="text-align: left;"><strong>2.4. Personal Data Processing Methods </strong></h3>
+<p style="text-align: left;">The method how our Company processes your personal data includes both manual and automated processing, including algorithmic processing, in our Company’s information systems.</p>
+<p style="text-align: left;">Your personal data are mainly processed by employees of our Company and, to an extent as required, by third parties. Before any disclosure of your personal data to a third party, we always enter into a written agreement with the third party, containing the same warranties in respect of personal data processing as adhered to by our Company in line with its statutory obligations.</p>
+<h3 style="text-align: left;"><strong>2.5. Recipients of Personal Data </strong></h3>
+<p style="text-align: left;">Your personal data are made available particularly to our Company’s employees in connection with performance of their professional duties requiring work with personal data of clients, however only to an extent necessary in the particular case and in compliance with all security measures.</p>
+<p style="text-align: left;">In addition, your personal data are disclosed to third parties participating in the processing of personal data of our Company’s clients, or, such personal data may be made available to them on other grounds in line with the law. Before any disclosure of your personal data to a third party, we always enter into a written agreement with the third party to stipulate the processing of personal data in a way to contain the same warranties in respect of personal data processing as adhered to by our Company in line with its statutory obligations.</p>
+<p style="text-align: left;">2.5.1. In accordance with applicable legislation, our Company is entitled, or directly, without your consent, obliged to disclose your personal data to:</p>
+<ul style="text-align: left;">
+<li>relevant state authorities, courts and law enforcement authorities for the purpose of performance of their obligations and for the purpose of enforcement of judgment;</li>
+<li style="text-align: justify; text-justify: inter-ideograph; text-autospace: none;">other parties to an extent stipulated by legislation, such as to third parties for the purpose of collection of our receivables from clients.</li>
+</ul>
+<p style="text-align: left;">2.5.2. Subject to your consent entitling us to dispose with information representing the personal data to the relevant extent, we also disclose your personal data to Easy Software ltd. for the purpose of distribution of information, offering of products and services of our Company, protection of rights and interests of our Company and customer care.</p>
+<h3 style="text-align: left;"><strong>2.6. Disclosure of Personal Data to Foreign Countries </strong></h3>
+<p style="text-align: left;">Your personal data are processed in the territory of the Czech Republic and other states of the European Union where International Group entities are seated and which share the same personal data protection standard as the Czech Republic. Neither our Company nor the entities participating in the processing of client personal data disclose personal data of clients to countries outside the European Union.</p>
+<h3 style="text-align: left;"><strong>2.7. Term of Personal Data Processing </strong></h3>
+<p style="text-align: left;">Our Company processed personal data of clients only for a time necessary with regard to the purpose of processing. From time to time we evaluate existence of the need to process certain personal data required for a particular purpose. Once we detect that the data are no longer required for any of the purposes, for which they have been processed, we destroy the data. However, in respect of certain purposes of personal data processing, we have internally evaluated the usual term of usability of personal data, after expiration of which we most carefully assess the need to process such personal data for the particular purpose. In this regard, it also holds that personal data processed for the purpose of:</p>
+<p style="text-align: left;">(a) performance of contracts are processed over the term of the contractual relationship with the client; then, the relevant personal data are usually usable for ten years;</p>
+<p style="text-align: left;">(b) offering of products and services are processed over the term of the contractual relationship; then, the relevant personal data are usually usable for ten years; if personal data are disclosed in this regard to third parties, the term of processing is defined by the third parties in accordance with applicable legislation and rules stated in these Principles;</p>
+<p style="text-align: left;">(c) customer care are processed over the term of the contractual relationship with the client; then, the relevant personal data are usually usable for ten years.</p>
+<h3 style="text-align: left;"><strong>2.8. Right to Revoke Consent </strong></h3>
+<p style="text-align: left;">In this Principles we tried to explain why we need your personal data and that for certain purposes we may process them with your consent only. You are not obliged to grant consent to our Company to process your personal data and you are also entitled to revoke your consent. At this point we would like to remind that we are also entitled to process some personal data for certain purposes without your consent. If you revoke your consent, we will discontinue the processing of the relevant personal data for purposes requiring the relevant consent; however, we may be entitled or even obliged to process the same personal data for other purposes.</p>
+<p style="text-align: left;">If you refuse to grant or revoke your consent, we may:</p>
+<p style="text-align: left;">(a) accordingly adjust the availability, scope or conditions of our products or services, or</p>
+<p style="text-align: left;">(b) refuse to provide you with our products or services once we find out that such consent is necessary to provide the product or service on the given terms.</p>
+<p style="text-align: left;">If you wish to revoke your consent with the processing of personal data, please refer to any of our branch offices, send us a letter to Company, Easy Software ltd , Kemp House, 152-160 City Road, EC1V 2NX London, United Kingdom,or via e-mail: <span id="cloakdc055c1498dcde910df7dfeb0272d43b">This email address is being protected from spambots. You need JavaScript enabled to view it.</span><script type='text/javascript'>
+				document.getElementById('cloakdc055c1498dcde910df7dfeb0272d43b').innerHTML = '';
+				var prefix = '&#109;a' + 'i&#108;' + '&#116;o';
+				var path = 'hr' + 'ef' + '=';
+				var addydc055c1498dcde910df7dfeb0272d43b = '&#105;nf&#111;' + '&#64;';
+				addydc055c1498dcde910df7dfeb0272d43b = addydc055c1498dcde910df7dfeb0272d43b + '&#101;&#97;sys&#111;ftw&#97;r&#101;' + '&#46;' + 'c&#111;m';
+				var addy_textdc055c1498dcde910df7dfeb0272d43b = '&#105;nf&#111;' + '&#64;' + '&#101;&#97;sys&#111;ftw&#97;r&#101;' + '&#46;' + 'c&#111;m';document.getElementById('cloakdc055c1498dcde910df7dfeb0272d43b').innerHTML += '<a ' + path + '\'' + prefix + ':' + addydc055c1498dcde910df7dfeb0272d43b + '\'>'+addy_textdc055c1498dcde910df7dfeb0272d43b+'<\/a>';
+		</script> or via form on the web pages of Easy Software.</p>
+<h3 style="text-align: left;"><strong>2.9. Sources of Personal Data </strong></h3>
+<p style="text-align: left;">We acquire personal data of clients particularly from:</p>
+<p style="text-align: left;">(a) the clients, directly, such as when concluding contracts related to provided Company’s products or services, and/or indirectly, such as during use of the Company’s products or services by the clients, or as part of making information about Company’s products and services available to the clients, such as through the Company’s website, etc.;</p>
+<p style="text-align: left;">(b) prospective customers interested in services of our Company as part of marketing events and campaigns;</p>
+<p style="text-align: left;">(c) own activities through processing and evaluation of other personal data of the clients.</p>
+<h3 style="text-align: left;"><strong>2.10. Your Right to Ask for Access to Personal Data and Protection of Client Rights </strong></h3>
+<p style="text-align: left;">If you ask us for information related to the processing of your personal data, we will provide you with all information about the data we process about you without undue delay. For providing this information, we are entitled to claim reasonable compensation of cost incurred in order to provide the information.If you find out or think that our Company or a third party participating in the processing of data processes your personal data in conflict with the protection of your private life and/or in conflict with the law, in particular if your personal data are inaccurate, you may:</p>
+<p style="text-align: left;">(a) request explanation from our Company or the third party participating in the processing of data;</p>
+<p style="text-align: left;">(b) request remedy of the defective state; in particular, you may request correction or amendment of the personal data; if needed, the data will be temporarily blocked or destroyed.</p>
+<p style="text-align: left;">If we find your request legitimate, our Company or the third party participating in the processing of data will remove the defective state free of charge and immediately.</p>
+<h3 style="text-align: left;"><strong>2.11. Company as a processor of personal data </strong></h3>
+<p style="text-align: left;">In certain cases, our Company also handles client personal data by authorization of another party (another administrator). For example, these cases include cooperation with Easy Software ltd., for third-party products or services, or cooperation with third parties. For detailed information, it is always necessary to contact the particular administrator of personal data, unless our Company is authorized to provide information in the particular case.</p>
+<h3 style="text-align: left;"><strong>2.12. Electronic Means of Communication and Mobile Applications </strong></h3>
+<p style="text-align: left;">As part of customer care, our Company develops technologies to let you use modern electronic means of communication and mobile applications to use our Company’s products and services. In particular, these include services related to the use of the internet, social networks and various mobile applications.</p>
+<p style="text-align: left;">Social networks. Also, you can address us through various social networks. We particularly use these communication channels as marketing tools; our products and services are not provided through social networks at this moment.</p>
+<p style="text-align: left;">Cookies. Also, we use cookies when providing our products and services. Cookies are small text files stored in the user’s computer after loading a website for the first time. These files facilitate identification of the way the visitors work with the contents of our website, which helps us in pursuing a friendlier communication with our website visitors or a more efficient marketing. More information about cookies is available on our website.</p>
+<h3 style="text-align: left;"><strong>2.13. Principles </strong></h3>
+<p style="text-align: left;">These Principles are valid and effective as of ___________. The current version of the Principles is published on our Company’s website and is also available at our branch offices.</p>
+<h3 style="text-align: left;"><strong>Annex 1 – Scope of Processed Personal Data </strong></h3>
+<p style="text-align: left;">Identification data – these include data such as name, surname, date, email, phone number, employer or. represented company; for clients who are natural persons – entrepreneurs, also the identification number and tax ID. Other possible identification data include, for example, information about the IP address of the computer used, and files of specific authentication data we agree to use</p>
+<p style="text-align: left;">Contact data – name, surname, contact addresses, telephone numbers, email addresses or other similar contact data. Other similar contact data may be IP address of used computer and files of specific authentication data we agree to use.</p>
+<p style="text-align: left;">In the event that you withdraw a submitted application for a product or service, we also process the application withdrawal date along with the data provided before the withdrawal.</p>
+<p style="margin-bottom: 13.3pt; line-height: 15pt; text-align: left;">Data arising out of performance of obligations under contracts – depending on the nature of the provided product or service, we process information related to the provided product or service. In this category, we process personal data such as the term of contract, ________</p>
+<p style="text-align: left;">Personal data acquired in connection with the provision of our products or services – these include personal data acquired during our interactions. In particular, these include:</p>
+<p style="text-align: left;">(i) data serving to secure communications;</p>
+<p style="text-align: left;">(ii) records of your preferred communication language, expressed interest in a product or service, your investment strategies, or your specific requirements disclosed to us.</p>
+	</div>
+	</div>
+	
+						 </div>
+</article></div>
+																																																																																																																																																									</div>
+
+						
+												<div id="rightcol" class="sidecol span4">
+	                        <div class="unseen"><strong>Additional information</strong></div>
+							<div class="row">
+																<div id="stickyright" class="sticky">
+										<div id="module213" class="module span4  background-gray mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+	<p><img src="/images/module/module_faq.jpg" alt="Free Trial" title="Free Trial" /></p>
+<h3 style="text-align: center;">Higher interactivity&nbsp;<br />&amp; engaged users</h3>
+<p style="text-align: center;">Web calculators engage your users,<br />improve lead generation&nbsp;<br />and e-commerce.&nbsp;</p>
+<p style="text-align: center;"><a href="http://app.calculoid.com/#/signup" class="btn btn-primary">Sign up Free</a></p></div>
+		</div>
+	</div>
+	
+								</div>
+															</div>
+						</div>
+											</div>
+				</div>
+			</div>
+		</section>
+		
+		
+																																						<section>
+			<div id="bottom9" class="bottom">
+				<div class="container">
+					<div class="row">
+							<div id="module204" class="module span0   mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+	<h2 style="text-align: center;">Start Free Now</h2>
+<p style="text-align: center;">Create your own web calculator in a matter of minutes. <br />Test all features in the 30-day free trial.&nbsp;<br /><br /></p>
+<p style="text-align: center;"><a href="http://app.calculoid.com/#/signup" class="btn btn-primary btn-large">Sign Up Free</a></p>
+<p style="text-align: center;">No credit card or installation needed</p></div>
+		</div>
+	</div>
+	
+					</div>
+					<div class="row-separator"><div class="row-separator-inner"></div></div>
+				</div>
+			</div>
+		</section>
+				
+		
+				<footer>
+												<div id="footer1" class="footer">
+						<div class="container">
+							<div class="row">
+									<div id="module146" class="module span6  pull-left mod-menu">
+				<div class="module-body">
+			<ul class="nav menu ">
+<li class="item-181">		<a href="/functions" > <span>Functions</span></a></li><li class="item-182">		<a href="/solutions" > <span>Solutions</span></a></li><li class="item-183">		<a href="/web-calculator-templates-by-calculoid" > <span>Templates</span></a></li><li class="item-213">		<a href="/faq" > <span>FAQ</span></a></li><li class="item-177">		<a href="/blog" > <span>Blog</span></a></li><li class="item-184">		<a href="/pricing" > <span>Pricing</span></a></li><li class="item-185">		<a href="/contacts" > <span>Contacts</span></a></li></ul>
+		</div>
+	</div>
+		<div id="module147" class="module span6  pull-right mod-menu">
+				<div class="module-body">
+			<ul class="nav menu ">
+<li class="item-189 current active">		<a href="/terms-of-service" > <span>Terms of service</span></a></li><li class="item-158">		<a href="/sitemap" > <span>XML</span></a></li><li class="item-157">		<a href="/site-map" > <span>Sitemap</span></a></li><li class="item-274">		<a href="/images/Calculoid---Product-sheet-2019---final-02.pdf" target="_blank" > <span>Product sheet</span></a></li><li class="item-276">		<a href="/changelog-roadmap" > <span>Changelog</span></a></li><li class="item-215">		<a href="/documentation" > <span>Documentation</span></a></li></ul>
+		</div>
+	</div>
+	
+							</div>
+													</div>
+					</div>
+																																																										<div id="footer8" class="footer">
+						<div class="container">
+							<div class="row">
+									<div id="module211" class="module span0   mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+	<p style="text-align: center;"><a href="/web-calculator-builder">Web calculator builder</a> &nbsp;/ <a href="/paypal-web-payment-tool">PayPal website payment tool</a>&nbsp;/&nbsp;<a href="/stripe-web-payment-tool">Stripe website payment tool</a> / <a href="/roi-calculator-builder">ROI calculator builder</a> / <a href="/payment-calculator-builder">Payment calculator builder</a>&nbsp;/ <a href="/finance-calculator-builder">Finance calculator builder</a> / <a href="/price-calculator-builder">Price calculator builder</a>&nbsp;/ <a href="/redmine-calculators-quizes-surveys">Redmine integration</a> / <a href="/mautic-web-calculators-quizes-surveys">Mautic integration</a> / <a href="/joomla-calculators-quizes-surveys">Joomla integration</a> / <a href="/drupal-calculators-quizes-surveys">Drupal integration</a> / <a href="/wordpress-calculators-quizes-surveys">WordPress integration</a> /&nbsp;<a href="/redmine-integrated-e-commerce-and-lead-generation-solution">Redmine e-commerce &amp; leads generating solution</a>&nbsp;/&nbsp;<a href="/costs-calculator-builder">Costs calculator</a> /&nbsp;<a href="/loan-debt-calculator-builder">Loan &amp; debt calculator</a> /&nbsp;<a href="/saving-calculator-builder">Saving calculator</a> /&nbsp;<a href="/medical-dosing-calculator-builder">Medical &amp; dosing calculator</a> /&nbsp;<a href="/online-store-calculator-builder">Online store calculator</a> /&nbsp;<a href="/web-calculators-quizzes-surveys-zapier-integration">Calculoid Zapier integration</a></p>
+<p>&nbsp;</p></div>
+		</div>
+	</div>
+	
+							</div>
+													</div>
+					</div>
+																<div id="footer9" class="footer">
+						<div class="container">
+							<div class="row">
+									<div id="module145" class="module span0   mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+	<p style="text-align: center;"><img src="/images/Logo_Calculoid.svg?v=2" alt="Web calculator designer - Calculoid.com" class="easy-logo-type-mark" style="height: 34px;" /></p>
+<p style="text-align: center;">2024 © Calculoid</p>
+<p class="social-links" style="font-size: 3em; text-align: center;"><a href="https://www.facebook.com/calculoid/" target="_blank" style="text-decoration: none; padding: 0 10px;"><em class="icon-facebook"></em></a> <a href="https://www.youtube.com/channel/UCqpQlnYud4jUwLdet7MmLHA/videos" target="_blank" style="text-decoration: none; padding: 0 10px;"><em class="icon-youtube"></em></a></p></div>
+		</div>
+	</div>
+	
+							</div>
+													</div>
+					</div>
+																</footer>
+
+	</div>
+</div>
+
+
+
+	<div id="fancybox_posttext" class="hide">
+		<div class="fancybox-posttext clearfix">
+			<div class="row">
+					<div id="module276" class="module span0   mod-custom">
+				<div class="module-body">
+			
+
+<div class="custom"  >
+	<p style="text-align: center;"><a href="http://app.calculoid.com/#/signup" class="btn btn-primary btn-large" onclick="jQuery.fancybox.close();">Sign up free</a></p></div>
+		</div>
+	</div>
+	
+			</div>
+		</div>
+	</div>
+<!-- Facebook Pixel Code -->
+<script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '223001248300093');
+  fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=223001248300093&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Facebook Pixel Code -->
+<!-- Facebook Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2372916946290023');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2372916946290023&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Facebook Pixel Code -->
+	<!--googleoff: all-->
+	<div id="cookie_notification">
+		<span class="notification small">Cookies help us deliver our services. If you continue to use our services, you agree to our use of cookies.</span><br />
+		<span class="accept btn btn-info btn-mini">I understand</span>
+	</div>
+	<!--googleon: all-->
+<script src="/templates/esw_easypeasy/javascript/template.js?v=1555507574" type="text/javascript"></script>
+<div id="system-message-container" class="hidden"><div id="system-message"></div></div>
+</body>
+</html>
