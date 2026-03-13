@@ -57,6 +57,20 @@
 
 `install-openclaw-core.sh`
 
+若直接运行：
+
+`./setup/install-openclaw-core.sh`
+
+脚本会进入交互模式，逐步提示：
+
+- 装到现有 agent 还是创建新 agent
+- 目标 agent / 新 agent ID
+- 是否安装 core cron jobs
+- 是否初始化 qmd
+- 是否执行 `qmd embed`
+- 时区
+- 是否先 dry-run
+
 典型用法：
 
 - 给 `main` 安装 core profile：

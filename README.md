@@ -169,6 +169,12 @@
 
 `./setup/install-openclaw-core.sh --openclaw-home "$HOME/.openclaw" --agent-ids main`
 
+如果你不想手动输入一长串参数，直接运行：
+
+`./setup/install-openclaw-core.sh`
+
+脚本会在运行过程中提示输入；大部分场景直接一路回车即可，默认就是给 `main` 安装 core profile。
+
 默认会为目标 agent 安装：
 
 - `memory-hourly`
@@ -186,6 +192,7 @@
 - `main` 会被自动补齐 `workspace` 与 `agentDir`，默认使用 `~/.openclaw/workspace` 与 `~/.openclaw/agents/main`
 - 新 agent 默认只具备最小 core profile，不会顺带装控制台、dashboard、任务闭环等整套团队能力
 - 可用 `--skip-jobs`、`--skip-qmd-init`、`--qmd-embed`、`--timezone` 等参数做细调
+- 不传关键参数时，会进入交互模式；传了参数则保持原来的静默安装模式
 - **macOS**：原则上可复用 shell 路径，但你仍应先确认本机 `OpenClaw`、`python3`、`git`、`gh` 都可用
 
 ## 需要提前配置的内容
