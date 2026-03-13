@@ -490,3 +490,40 @@ openclaw cron list --json
 - **结构化知识**：热缓存、实体档案、知识文件、daily/weekly/archive、知识提案
 - **可靠自动化**：cron prompt 源文件、增量扫描脚本、执行日志、可追溯备份
 - **实现编排**：`aic-builder` 优先调用 `Codex` / `Claude Code`
+
+## Network/DNS sinkhole workaround (web_fetch DoH fallback)
+
+Some networks transparently rewrite UDP/TCP DNS (53) to `198.18.0.0/15`, which can trigger OpenClaw SSRF protections and break `web_fetch` for public sites.
+
+This repo provides **opt-in** patch scripts for the OpenClaw installation:
+
+- Runtime patch: `setup/patch_openclaw_web_fetch_doh.py`
+- Config schema patch (allow `tools.web.fetch.doh`): `setup/patch_openclaw_web_fetch_doh_schema.py`
+
+After applying patches, enable DoH in `~/.openclaw/openclaw.json`:
+
+```json5
+{
+  tools: {
+    web: {
+      fetch: {
+        doh: {
+          enabled: true,
+          endpointUrl: "https://dns.google/resolve",
+          pinnedIp: "8.8.8.8",
+          timeoutMs: 5000,
+        },
+      },
+    },
+  },
+}
+```
+
+Acceptance smoke + SSRF regression helper:
+
+- `scripts/smoke_web_fetch_doh.sh`
+
+Rollback:
+
+- Disable/remove `tools.web.fetch.doh` in config.
+- Restore `.bak.*` files created by patch scripts, or reinstall OpenClaw.
