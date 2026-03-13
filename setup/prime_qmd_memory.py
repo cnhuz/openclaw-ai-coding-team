@@ -36,19 +36,26 @@ def run_qmd(command: list[str], env: dict[str, str], allow_exists: bool = False)
     raise SystemExit(f"qmd command failed: {' '.join(command)}\n{result.stdout}{result.stderr}")
 
 
-def managed_collections(workspace: Path, agent_id: str) -> list[dict[str, str]]:
-    return [
+def managed_collections(workspace: Path, agent_id: str, profile: str) -> list[dict[str, str]]:
+    collections = [
         {"name": collection_name("memory-root", agent_id), "path": str(workspace), "pattern": "MEMORY.md"},
         {"name": collection_name("memory-alt", agent_id), "path": str(workspace), "pattern": "memory.md"},
         {"name": collection_name("memory-dir", agent_id), "path": str(workspace / "memory"), "pattern": "**/*.md"},
-        {"name": collection_name("handoffs", agent_id), "path": str(workspace / "handoffs"), "pattern": "**/*.md"},
-        {
-            "name": collection_name("research-cards", agent_id),
-            "path": str(workspace / "data" / "research" / "opportunity-cards"),
-            "pattern": "**/*.md",
-        },
-        {"name": collection_name("dashboard", agent_id), "path": str(workspace / "data"), "pattern": "dashboard.md"},
     ]
+    if profile == "core":
+        return collections
+    collections.extend(
+        [
+            {"name": collection_name("handoffs", agent_id), "path": str(workspace / "handoffs"), "pattern": "**/*.md"},
+            {
+                "name": collection_name("research-cards", agent_id),
+                "path": str(workspace / "data" / "research" / "opportunity-cards"),
+                "pattern": "**/*.md",
+            },
+            {"name": collection_name("dashboard", agent_id), "path": str(workspace / "data"), "pattern": "dashboard.md"},
+        ]
+    )
+    return collections
 
 
 def ensure_collection_roots(collections: list[dict[str, str]]) -> None:
@@ -78,6 +85,7 @@ def main() -> int:
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--agent-dir", required=True)
     parser.add_argument("--qmd-command", default="qmd")
+    parser.add_argument("--profile", choices=["team", "core"], default="team")
     parser.add_argument("--embed", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -85,7 +93,7 @@ def main() -> int:
     workspace = Path(args.workspace).expanduser()
     agent_dir = Path(args.agent_dir).expanduser()
     env = build_env(agent_dir)
-    collections = managed_collections(workspace, args.agent_id)
+    collections = managed_collections(workspace, args.agent_id, args.profile)
     ensure_collection_roots(collections)
 
     commands: list[list[str]] = []
@@ -115,6 +123,7 @@ def main() -> int:
                     "agent_id": args.agent_id,
                     "workspace": str(workspace),
                     "agent_dir": str(agent_dir),
+                    "profile": args.profile,
                     "embed": args.embed,
                     "commands": commands,
                 },
@@ -137,6 +146,7 @@ def main() -> int:
                 "agent_id": args.agent_id,
                 "workspace": str(workspace),
                 "agent_dir": str(agent_dir),
+                "profile": args.profile,
                 "embed": args.embed,
                 "collections": [item["name"] for item in collections],
                 "status": status_output,

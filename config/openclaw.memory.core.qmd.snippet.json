@@ -1,0 +1,57 @@
+{
+  "memory": {
+    "backend": "qmd",
+    "citations": "auto",
+    "qmd": {
+      "searchMode": "search",
+      "includeDefaultMemory": true,
+      "paths": [
+        {
+          "name": "core-memory",
+          "path": "memory",
+          "pattern": "**/*.md"
+        },
+        {
+          "name": "core-knowledge",
+          "path": "memory/knowledge",
+          "pattern": "**/*.md"
+        },
+        {
+          "name": "core-context",
+          "path": "memory/context",
+          "pattern": "**/*.md"
+        }
+      ],
+      "sessions": {
+        "enabled": true,
+        "retentionDays": 14
+      },
+      "update": {
+        "interval": "5m",
+        "onBoot": true,
+        "waitForBootSync": false,
+        "embedInterval": "24h",
+        "commandTimeoutMs": 120000,
+        "updateTimeoutMs": 300000,
+        "embedTimeoutMs": 1800000
+      },
+      "limits": {
+        "maxResults": 6,
+        "maxSnippetChars": 1200,
+        "maxInjectedChars": 4000,
+        "timeoutMs": 4000
+      },
+      "scope": {
+        "default": "deny",
+        "rules": [
+          {
+            "action": "allow",
+            "match": {
+              "chatType": "direct"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

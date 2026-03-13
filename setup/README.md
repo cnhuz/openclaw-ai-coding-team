@@ -44,6 +44,33 @@
 - `--skip-qmd-init`：跳过 qmd 预热
 - `--qmd-embed`：安装阶段顺带跑一次 `qmd embed`
 
+## 最小核心安装
+
+如果只想给 `main` 或指定 agent 安装：
+
+- 记忆系统
+- 知识结构
+- 每日反思
+- qmd / embed 搜索
+
+而不想部署完整 coding team，可使用：
+
+`install-openclaw-core.sh`
+
+典型用法：
+
+- 给 `main` 安装 core profile：
+  - `./setup/install-openclaw-core.sh --openclaw-home "$HOME/.openclaw" --agent-ids main`
+- 创建新 agent 并直接赋予 core profile：
+  - `./setup/install-openclaw-core.sh --openclaw-home "$HOME/.openclaw" --create-agent-id writer-cn --role-name "内容助理" --role-title "内容生产" --mission "围绕用户目标持续沉淀内容与知识资产" --accepted-from main`
+
+这条安装链默认会安装的 job：
+
+- `core-memory-hourly-<agent>`
+- `core-daily-reflection-<agent>`
+- `core-daily-curation-<agent>`
+- `core-memory-weekly-<agent>`
+
 建议理解方式：
 
 - 根 `README.md`：说明“这套系统在什么环境下能跑、需要先配什么”

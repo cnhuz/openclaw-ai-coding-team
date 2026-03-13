@@ -45,6 +45,7 @@
 - `worktree_lifecycle.py`：为单个 agent 管理 git worktree 的 setup / status / cleanup 生命周期元数据与安全清理边界
 - `compute_agent_kpi.py`：按证据计算 Daily / Weekly agent KPI scorecards
 - `manage_team_agent.py`：新增/退役全功能团队 agent，并同步 runtime `openclaw.json`；支持 `--dry-run`
+- `manage_core_agent.py`：为 `main` 或指定 agent 安装最小 core profile，或创建新 agent 并直接赋予记忆 / 知识结构 / 每日反思 / qmd 能力
 
 它们由本仓库持续维护，目前既包含原有记忆/任务协同脚本，也包含新加入的持续探索脚本。
 
@@ -91,6 +92,7 @@
 - `scripts/worktree_lifecycle.py`
 - `scripts/compute_agent_kpi.py`
 - `scripts/manage_team_agent.py`
+- `scripts/manage_core_agent.py`
 
 这样 cron prompt 可以直接使用相对路径，不必依赖当前仓库结构。
 

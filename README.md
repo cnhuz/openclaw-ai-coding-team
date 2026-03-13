@@ -155,6 +155,37 @@
 
 - **Linux / Ubuntu**：一等支持，优先使用 `setup/install-openclaw-team.sh`
 - **Windows / PowerShell**：可用，优先使用 `setup/install-openclaw-team.ps1`
+
+## Core Profile
+
+如果你不想部署整套 coding team，只想给 `main` 或某个指定 agent 一键加上：
+
+- 记忆系统
+- 知识结构
+- 每日反思
+- qmd / embed 搜索
+
+可以直接使用最小核心安装脚本：
+
+`./setup/install-openclaw-core.sh --openclaw-home "$HOME/.openclaw" --agent-ids main`
+
+默认会为目标 agent 安装：
+
+- `memory-hourly`
+- `daily-reflection`
+- `daily-curation`
+- `memory-weekly`
+- qmd 预热（默认 BM25/update；加 `--qmd-embed` 可顺带跑 embed）
+
+如果要创建一个新 agent，并直接赋予这套能力：
+
+`./setup/install-openclaw-core.sh --openclaw-home "$HOME/.openclaw" --create-agent-id writer-cn --role-name "内容助理" --role-title "内容生产" --mission "围绕用户目标持续沉淀内容与知识资产" --accepted-from main`
+
+说明：
+
+- `main` 会被自动补齐 `workspace` 与 `agentDir`，默认使用 `~/.openclaw/workspace` 与 `~/.openclaw/agents/main`
+- 新 agent 默认只具备最小 core profile，不会顺带装控制台、dashboard、任务闭环等整套团队能力
+- 可用 `--skip-jobs`、`--skip-qmd-init`、`--qmd-embed`、`--timezone` 等参数做细调
 - **macOS**：原则上可复用 shell 路径，但你仍应先确认本机 `OpenClaw`、`python3`、`git`、`gh` 都可用
 
 ## 需要提前配置的内容
