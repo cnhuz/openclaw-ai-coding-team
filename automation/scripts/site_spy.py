@@ -46,14 +46,6 @@ def truncate_text(value: str, max_chars: int) -> TruncatedText:
     return TruncatedText(text=value[:max_chars], truncated=True, original_chars=len(value))
 
 
-def mask_key(value: str) -> str:
-    if not value:
-        return ""
-    if len(value) <= 8:
-        return "***"
-    return f"{value[:3]}***{value[-3:]}"
-
-
 def require_api_key(api_key: str, auth_url: str) -> None:
     if api_key:
         return
@@ -251,7 +243,7 @@ def cmd_auth_status(args: argparse.Namespace) -> None:
         path="/watch",
         timeout=args.timeout,
     )
-    print_json({"authenticated": True, "api_url": api_url, "api_key_hint": mask_key(api_key)})
+    print_json({"authenticated": True, "api_url": api_url})
 
 
 def cmd_list_watches(args: argparse.Namespace) -> None:
