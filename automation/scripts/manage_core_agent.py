@@ -601,8 +601,8 @@ def main() -> int:
     parser.add_argument("--daily-reflection-cron", default="10 0 * * *")
     parser.add_argument("--daily-curation-cron", default="20 0 * * *")
     parser.add_argument("--memory-weekly-cron", default="40 0 * * *")
-    parser.add_argument("--format", choices=["md", "json"], default="md")
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--format", choices=["md", "json"], default=None, dest="global_format")
+    parser.add_argument("--dry-run", action="store_true", dest="global_dry_run")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -613,6 +613,8 @@ def main() -> int:
     apply_parser.add_argument("--mission", default="围绕用户目标稳定积累记忆、整理知识并执行每日反思。")
     apply_parser.add_argument("--accepted-from", action="append", default=["main"])
     apply_parser.add_argument("--allow-call", action="append", default=[])
+    apply_parser.add_argument("--format", choices=["md", "json"], default=None)
+    apply_parser.add_argument("--dry-run", action="store_true")
 
     create_parser = subparsers.add_parser("create")
     create_parser.add_argument("--agent-id", required=True)
@@ -622,6 +624,8 @@ def main() -> int:
     create_parser.add_argument("--accepted-from", action="append", default=["main"])
     create_parser.add_argument("--allow-call", action="append", default=[])
     create_parser.add_argument("--heartbeat-every", default="")
+    create_parser.add_argument("--format", choices=["md", "json"], default=None)
+    create_parser.add_argument("--dry-run", action="store_true")
 
     args = parser.parse_args()
     openclaw_home = Path(args.openclaw_home).expanduser().resolve()
@@ -630,6 +634,7 @@ def main() -> int:
     accepted_from = split_csv(args.accepted_from)
     allow_call = split_csv(args.allow_call)
     heartbeat_every = getattr(args, "heartbeat_every", "")
+    dry_run = bool(args.global_dry_run or args.dry_run)
     result = configure_core(
         agent_id=args.agent_id,
         role_name=role_name,
@@ -649,9 +654,10 @@ def main() -> int:
         daily_reflection_cron=args.daily_reflection_cron,
         daily_curation_cron=args.daily_curation_cron,
         memory_weekly_cron=args.memory_weekly_cron,
-        dry_run=args.dry_run,
+        dry_run=dry_run,
     )
-    if args.format == "json":
+    output_format = args.format or args.global_format or "md"
+    if output_format == "json":
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         print(render_md(result))
