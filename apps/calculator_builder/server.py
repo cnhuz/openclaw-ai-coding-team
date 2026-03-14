@@ -82,7 +82,7 @@ class App:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "CalculatorBuilderMVP/0.1"
+    server_version = "CalculatorBuilderMVP/0.2"
 
     def do_GET(self) -> None:
         app: App = self.server.app  # type: ignore[attr-defined]
@@ -112,6 +112,15 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/r/"):
             calc_id = path.split("/", 2)[2]
             return self._handle_results(app, calc_id, qs)
+        if path.startswith("/admin/analytics/"):
+            calc_id = path.split("/", 3)[3]
+            return self._handle_admin_analytics(app, calc_id)
+        if path.startswith("/admin/submissions/"):
+            calc_id = path.split("/", 3)[3]
+            return self._handle_admin_submissions(app, calc_id)
+        if path.startswith("/admin/export/"):
+            calc_id = path.split("/", 3)[3]
+            return self._handle_admin_export(app, calc_id)
 
         self._send_text(HTTPStatus.NOT_FOUND, "not found")
 
@@ -172,10 +181,16 @@ class Handler(BaseHTTPRequestHandler):
             rows.append("<ul>")
             for c in calcs:
                 cid = esc(c.get("id", ""))
+                views = app.storage.count_views(str(c.get("id", "")))
+                subs = app.storage.count_submissions(str(c.get("id", "")))
+                conv = (100.0 * subs / views) if views else 0.0
                 rows.append(
                     f"<li><b>{esc(c.get('name', cid))}</b> "
                     f"<span class='muted'>({cid})</span> "
-                    f"<a href='/c/{cid}'>Open</a> | <a href='/edit/{cid}'>Edit</a></li>"
+                    f"<span class='muted'>views={views} submissions={subs} conv={conv:.1f}%</span> "
+                    f"<a href='/c/{cid}'>Open</a> | <a href='/edit/{cid}'>Edit</a> | "
+                    f"<a href='/admin/analytics/{cid}'>Analytics</a> | <a href='/admin/submissions/{cid}'>Submissions</a>"
+                    f"</li>"
                 )
             rows.append("</ul>")
         rows.append("</div>")
@@ -212,11 +227,18 @@ class Handler(BaseHTTPRequestHandler):
             "updated_at": now_iso(),
             "require_email_for_full_result": False,
             "webhook_url": "",
+            "rate_limit": {"window_seconds": 60, "max_submissions": 5},
             "payment": {"enabled": False},
             "fields": [
                 {"key": "x", "label": "X", "type": "number", "min": 0, "max": 100, "step": 1, "default": 10},
                 {"key": "y", "label": "Y", "type": "number", "min": 0, "max": 100, "step": 1, "default": 20},
-                {"key": "result", "label": "Result", "type": "result", "format": "number", "formula": "x + y"},
+                {
+                    "key": "result",
+                    "label": "Result",
+                    "type": "result",
+                    "format": "number",
+                    "formula": "x + y",
+                },
             ],
         }
         app.storage.save_calculator(calc)
@@ -232,10 +254,14 @@ class Handler(BaseHTTPRequestHandler):
         embed = f"<iframe src=\"{hosted}?embed=1\" style=\"width:100%;height:520px;border:0\"></iframe>"
 
         submissions = app.storage.list_submissions(calc_id, limit=20)
+        views = app.storage.count_views(calc_id)
+        subs = app.storage.count_submissions(calc_id)
+        conv = (100.0 * subs / views) if views else 0.0
 
         rows = [
             f"<h1>Edit: {esc(calc.get('name', calc_id))}</h1>",
-            f"<p><a href='/'>Home</a> | <a href='/c/{esc(calc_id)}'>Open calculator</a></p>",
+            f"<p><a href='/'>Home</a> | <a href='/c/{esc(calc_id)}'>Open calculator</a> | <a href='/admin/analytics/{esc(calc_id)}'>Analytics</a> | <a href='/admin/submissions/{esc(calc_id)}'>Submissions</a></p>",
+            f"<p class='muted'>views={views} submissions={subs} conv={conv:.1f}%</p>",
             "<div class='row'>",
             "<div class='card'>",
             "<h2>Config (JSON)</h2>",
@@ -265,6 +291,20 @@ class Handler(BaseHTTPRequestHandler):
             calc = app.storage.load_calculator(calc_id)
         except FileNotFoundError:
             return self._send_text(HTTPStatus.NOT_FOUND, "calculator not found")
+
+        # record view (best-effort)
+        try:
+            app.storage.append_view(
+                calc_id,
+                {
+                    "ts": now_iso(),
+                    "ip": str(getattr(self, "client_address", ("", 0))[0] or ""),
+                    "ua": str(self.headers.get("User-Agent", "")),
+                    "embed": bool(embed),
+                },
+            )
+        except Exception:
+            pass
 
         fields = calc.get("fields", [])
         if not isinstance(fields, list):
@@ -352,11 +392,29 @@ class Handler(BaseHTTPRequestHandler):
         except FileNotFoundError:
             return self._send_text(HTTPStatus.NOT_FOUND, "calculator not found")
 
+        # anti-abuse: basic IP rate limit
+        rate = calc.get("rate_limit") or {}
+        window_seconds = int(rate.get("window_seconds", 60) or 60)
+        max_submissions = int(rate.get("max_submissions", 5) or 5)
+        ip = str(getattr(self, "client_address", ("", 0))[0] or "")
+        if not app.storage.allow_and_record_submission(
+            calc_id=calc_id,
+            ip=ip,
+            now_ts=time.time(),
+            window_seconds=window_seconds,
+            max_submissions=max_submissions,
+        ):
+            return self._send_error_page(calc, "Too many submissions. Please try again later.")
+
         fields = calc.get("fields", [])
         if not isinstance(fields, list):
             fields = []
 
         email = form.get("email", "").strip()
+        require_email = bool(calc.get("require_email_for_full_result"))
+        if require_email and not email:
+            return self._send_error_page(calc, "Email is required to view results.")
+
         inputs: dict[str, Any] = {}
         for f in fields:
             if not isinstance(f, dict):
@@ -425,9 +483,6 @@ class Handler(BaseHTTPRequestHandler):
 
         webhook_ok, webhook_msg = post_webhook(str(calc.get("webhook_url", "")), submission)
 
-        # Compose result view links.
-        # - Base link: shows results (or locked screen)
-        # - Unlock link: can be generated after payment success and shared back to user
         result_link = f"http://{app.host}:{app.port}/r/{calc_id}?" + urlencode({"submission_id": submission_id})
         unlock_link = ""
         if payment_enabled and payment_mode == "required":
@@ -463,7 +518,6 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 email_status = f"email send failed: {e}"
 
-        # Decide next action for payment
         pay_html = ""
         if payment_enabled:
             amount = int(payment.get("amount_cents", 0) or 0)
@@ -502,7 +556,7 @@ class Handler(BaseHTTPRequestHandler):
             f"<p><b>ID:</b> {esc(submission_id)}</p>",
             f"<p><b>Email:</b> {esc(email or '-')}</p>",
             f"<p><b>Email status:</b> {esc(email_status)}</p>",
-            f"<p><b>Webhook:</b> {'<span class=ok>ok</span>' if webhook_ok else '<span class=danger>failed</span>'} {esc(webhook_msg)}</p>",
+            f"<p><b>Webhook:</b> {'<span class=ok>ok</span>' if webhook_ok else '<span class=danger>failed</span>'} {esc(webhook_msg)} </p>",
             f"<p><b>Results link:</b> <a href='{esc(result_link)}'>{esc(result_link)}</a></p>",
             (f"<p><b>Unlock link:</b> <a href='{esc(unlock_link)}'>{esc(unlock_link)}</a></p>" if unlock_link else ""),
             "</div>",
@@ -577,6 +631,60 @@ class Handler(BaseHTTPRequestHandler):
 
         self._send_html(HTTPStatus.OK, render_page("Results", "\n".join(rows)))
 
+    def _handle_admin_analytics(self, app: App, calc_id: str) -> None:
+        try:
+            calc = app.storage.load_calculator(calc_id)
+        except FileNotFoundError:
+            return self._send_text(HTTPStatus.NOT_FOUND, "calculator not found")
+
+        views = app.storage.count_views(calc_id)
+        subs = app.storage.count_submissions(calc_id)
+        conv = (100.0 * subs / views) if views else 0.0
+
+        rows = [
+            f"<h1>Analytics: {esc(calc.get('name', calc_id))}</h1>",
+            f"<p><a href='/'>Home</a> | <a href='/edit/{esc(calc_id)}'>Edit</a> | <a href='/c/{esc(calc_id)}'>Open</a> | <a href='/admin/submissions/{esc(calc_id)}'>Submissions</a></p>",
+            "<div class='card'>",
+            f"<p><b>views</b>: {views}</p>",
+            f"<p><b>submissions</b>: {subs}</p>",
+            f"<p><b>conversion</b>: {conv:.1f}%</p>",
+            "</div>",
+        ]
+        self._send_html(HTTPStatus.OK, render_page("Analytics", "\n".join(rows)))
+
+    def _handle_admin_submissions(self, app: App, calc_id: str) -> None:
+        try:
+            calc = app.storage.load_calculator(calc_id)
+        except FileNotFoundError:
+            return self._send_text(HTTPStatus.NOT_FOUND, "calculator not found")
+
+        subs = app.storage.list_submissions(calc_id, limit=200)
+        rows = [
+            f"<h1>Submissions: {esc(calc.get('name', calc_id))}</h1>",
+            f"<p><a href='/'>Home</a> | <a href='/edit/{esc(calc_id)}'>Edit</a> | <a href='/admin/analytics/{esc(calc_id)}'>Analytics</a></p>",
+            f"<p><a href='/admin/export/{esc(calc_id)}'>Download CSV</a></p>",
+        ]
+        if not subs:
+            rows.append("<p class='muted'>No submissions yet.</p>")
+        else:
+            rows.append("<pre>" + esc("\n".join(json.dumps(s, ensure_ascii=False) for s in subs)) + "</pre>")
+        self._send_html(HTTPStatus.OK, render_page("Submissions", "\n".join(rows)))
+
+    def _handle_admin_export(self, app: App, calc_id: str) -> None:
+        try:
+            app.storage.load_calculator(calc_id)
+        except FileNotFoundError:
+            return self._send_text(HTTPStatus.NOT_FOUND, "calculator not found")
+
+        csv_text = app.storage.export_submissions_csv(calc_id)
+        data = csv_text.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Disposition", f"attachment; filename=\"submissions_{calc_id}.csv\"")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def _handle_save(self, app: App, calc_id: str) -> None:
         form = load_form_body(self)
         raw = form.get("config", "")
@@ -589,6 +697,8 @@ class Handler(BaseHTTPRequestHandler):
             fields = calc.get("fields")
             if not isinstance(fields, list):
                 raise ValueError("fields must be a list")
+            if "rate_limit" not in calc:
+                calc["rate_limit"] = {"window_seconds": 60, "max_submissions": 5}
             app.storage.save_calculator(calc)
         except Exception as e:
             body = render_page(
@@ -687,11 +797,6 @@ def main() -> None:
     app_root = Path(__file__).resolve().parent
     storage = Storage(root=app_root / "data")
     storage.ensure()
-
-    for name in ("pricing", "roi", "volume_discount"):
-        path = storage.templates_dir / f"{name}.json"
-        if not path.exists():
-            pass
 
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     httpd.app = App(storage=storage, host=args.host, port=args.port)  # type: ignore[attr-defined]

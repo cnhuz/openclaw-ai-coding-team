@@ -4,6 +4,7 @@
   "description": "Compute ROI% and net gain based on cost, savings, and revenue lift.",
   "require_email_for_full_result": false,
   "webhook_url": "",
+  "rate_limit": {"window_seconds": 60, "max_submissions": 5},
   "payment": {
     "enabled": false
   },

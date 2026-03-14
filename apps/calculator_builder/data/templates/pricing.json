@@ -4,6 +4,7 @@
   "description": "Quote = base_fee + seats * seat_price. Lead capture before showing full quote.",
   "require_email_for_full_result": true,
   "webhook_url": "",
+  "rate_limit": {"window_seconds": 60, "max_submissions": 5},
   "payment": {
     "enabled": true,
     "mode": "optional",

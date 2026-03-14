@@ -4,6 +4,7 @@
   "description": "Discount tiers using IF. Total = qty * unit_price * (1 - discount).",
   "require_email_for_full_result": true,
   "webhook_url": "",
+  "rate_limit": {"window_seconds": 60, "max_submissions": 5},
   "payment": {
     "enabled": true,
     "mode": "required",
